@@ -1,0 +1,86 @@
+{{!-- RNK™ Vellum — gm-hub.hbs --}}
+<div class="vellum-settings-form vhub-layout">
+
+  {{#if hasActors}}
+
+    {{#each actors}}
+    <div class="vhub-actor-card {{#if expanded}}vhub-actor-card--open{{/if}}" data-actor-id="{{id}}">
+
+      {{!-- Card header (always visible) --}}
+      <div class="vhub-actor-header">
+        <img class="vhub-actor-img" src="{{img}}" alt="" />
+        <span class="vhub-actor-name">{{name}}</span>
+        <div class="vhub-header-actions">
+          <button class="vhub-open-sheet-btn vhub-btn" title="Open Sheet"><i class="fas fa-scroll"></i></button>
+          <button class="vhub-token-glow-btn vhub-btn {{#if tokenGlow}}vhub-btn--active{{/if}}"
+                  title="{{#if tokenGlow}}Token Glow ON{{else}}Token Glow OFF{{/if}}">
+            <i class="fas fa-fire"></i>
+          </button>
+        </div>
+        <span class="vhub-expand-icon"><i class="fas fa-chevron-{{#if expanded}}up{{else}}down{{/if}}"></i></span>
+      </div>
+
+      {{!-- Expanded settings --}}
+      {{#if expanded}}
+      <div class="vhub-actor-settings">
+
+        <div class="vellum-settings-section">
+          <div class="vellum-settings-section-title">Portrait Glow</div>
+
+          <div class="vellum-settings-row">
+            <label>Glow Color</label>
+            <input type="color" name="glowColor" value="{{glowColor}}" />
+            <span class="vellum-settings-value">{{glowColor}}</span>
+          </div>
+
+          <div class="vellum-settings-row">
+            <label>Blur</label>
+            <input type="range" name="glowBlur" min="0" max="30" step="1" value="{{glowBlur}}" />
+            <span class="vellum-settings-value vhub-blur-val">{{glowBlur}}px</span>
+          </div>
+
+          <div class="vellum-settings-row">
+            <label>Spread</label>
+            <input type="range" name="glowSpread" min="0" max="16" step="1" value="{{glowSpread}}" />
+            <span class="vellum-settings-value vhub-spread-val">{{glowSpread}}px</span>
+          </div>
+        </div>
+
+        <div class="vellum-settings-section">
+          <div class="vellum-settings-section-title">Blessing Tokens</div>
+
+          <div class="vellum-settings-row">
+            <label>Token Color</label>
+            <input type="color" name="blessingColor" value="{{blessingColor}}" />
+            <span class="vellum-settings-value">{{blessingColor}}</span>
+          </div>
+
+          <div class="vellum-settings-row">
+            <label>Token Count</label>
+            <div class="vhub-count-btns">
+              <button type="button" class="vhub-blessing-count-btn {{#if (eq blessingCount 1)}}vhub-btn--active{{/if}}" data-count="1">1</button>
+              <button type="button" class="vhub-blessing-count-btn {{#if (eq blessingCount 2)}}vhub-btn--active{{/if}}" data-count="2">2</button>
+              <button type="button" class="vhub-blessing-count-btn {{#if (eq blessingCount 3)}}vhub-btn--active{{/if}}" data-count="3">3</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="vhub-card-footer">
+          <button class="vhub-reset-btn vellum-settings-btn vellum-settings-btn--ghost">Reset to Defaults</button>
+        </div>
+
+      </div>
+      {{/if}}
+
+    </div>
+    {{/each}}
+
+  {{else}}
+  <div class="vhub-empty">
+    <i class="fas fa-feather-alt"></i>
+    <p>No actors are using the RNK™ Vellum sheet.</p>
+    <p style="opacity:0.6;font-size:0.72rem;">Open an actor sheet and switch to the Vellum sheet first.</p>
+  </div>
+  {{/if}}
+
+</div>

@@ -1,0 +1,28 @@
+{{!-- RNK™ Vellum — container-sheet.hbs --}}
+{{!-- © 2026 RNK Enterprise. All rights reserved. See LICENSE. --}}
+<div class="vellum-container-sheet">
+
+  <div class="vellum-container-info">
+    <strong>{{item.name}}</strong>
+    &nbsp;·&nbsp; {{used}} / {{capacity}} slots used
+  </div>
+
+  <div class="vellum-container-list">
+    {{#each contents}}
+    <div class="vellum-container-slot">
+      <span class="vellum-container-slot-num">{{add index 1}}.</span>
+      <input class="container-slot-input" type="text"
+             data-index="{{index}}"
+             value="{{label}}"
+             placeholder="Empty" />
+    </div>
+    {{/each}}
+  </div>
+
+  <div class="vellum-container-footer">
+    <button type="button" class="vellum-btn--ghost container-add-slot">
+      + Add Slot
+    </button>
+  </div>
+
+</div>

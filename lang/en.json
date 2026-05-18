@@ -1,0 +1,53 @@
+{
+  "RNK_VELLUM.SheetLabel":         "RNK™ Vellum",
+  "RNK_VELLUM.ItemSheetLabel":     "RNK™ Vellum Item",
+
+  "RNK_VELLUM.Name":               "Name",
+  "RNK_VELLUM.Class":              "Class",
+  "RNK_VELLUM.Level":              "Level",
+  "RNK_VELLUM.Description":        "Description",
+  "RNK_VELLUM.HP":                 "HP",
+  "RNK_VELLUM.AC":                 "Armor Class",
+  "RNK_VELLUM.GP":                 "GP",
+  "RNK_VELLUM.Charm":              "Charm",
+
+  "RNK_VELLUM.STR":                "STR",
+  "RNK_VELLUM.DEX":                "DEX",
+  "RNK_VELLUM.CON":                "CON",
+  "RNK_VELLUM.INT":                "INT",
+  "RNK_VELLUM.WIS":                "WIS",
+  "RNK_VELLUM.CHA":                "CHA",
+
+  "RNK_VELLUM.Abilities":          "Attacks, Abilities, Skills, Spells",
+  "RNK_VELLUM.AbilityName":        "Name",
+  "RNK_VELLUM.AbilityDesc":        "Description",
+  "RNK_VELLUM.AbilityExtra":       "Extra",
+  "RNK_VELLUM.AddAbility":         "+ Add Row",
+
+  "RNK_VELLUM.Traits":             "Traits / Talent",
+  "RNK_VELLUM.Flaws":              "Flaws",
+  "RNK_VELLUM.Phobia":             "Phobia",
+  "RNK_VELLUM.Effects":            "Effects",
+
+  "RNK_VELLUM.Inventory":          "Inventory",
+  "RNK_VELLUM.Portrait":           "Portrait",
+  "RNK_VELLUM.AnimalDeity":        "Animal Deity Portrait",
+  "RNK_VELLUM.Blessings":          "Blessings",
+  "RNK_VELLUM.BlessingTitle":      "Blessing token — click to spend or restore",
+
+  "RNK_VELLUM.SizeSmall":          "Small",
+  "RNK_VELLUM.SizeMedium":         "Medium",
+  "RNK_VELLUM.SizeLarge":          "Large",
+
+  "RNK_VELLUM.ItemType":           "Item Type",
+  "RNK_VELLUM.ItemTypeStandard":   "Standard",
+  "RNK_VELLUM.ItemTypeContainer":  "Container",
+  "RNK_VELLUM.ItemTypeNotepad":    "Notepad",
+  "RNK_VELLUM.Capacity":           "Capacity",
+  "RNK_VELLUM.Notes":              "Notes",
+  "RNK_VELLUM.ContainerContents":  "Contents",
+
+  "RNK_VELLUM.NotepadTitle":       "Notepad",
+  "RNK_VELLUM.ContainerTitle":     "Container",
+  "RNK_VELLUM.AddSlot":            "+ Add Slot"
+}

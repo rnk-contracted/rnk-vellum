@@ -1,0 +1,71 @@
+{{!-- RNK™ Vellum — item-sheet.hbs --}}
+{{!-- © 2026 RNK Enterprise. All rights reserved. See LICENSE. --}}
+<form class="vellum-item-sheet" autocomplete="off">
+
+  {{!-- Name + portrait row --}}
+  <div class="vellum-item-header-row">
+    <img class="vellum-item-sheet-img" src="{{item.img}}" title="Click to change" alt="icon" />
+    <input class="vellum-input vellum-item-name-input" type="text" name="name" value="{{item.name}}" />
+  </div>
+
+  {{!-- Type + Category --}}
+  <div class="vellum-item-field-row">
+    <label class="vellum-label">Item Type:</label>
+    <select class="vellum-select vellum-item-type-select">
+      {{#each types}}
+      <option value="{{this}}" {{#if (eq this ../vellumType)}}selected{{/if}}>{{capitalize this}}</option>
+      {{/each}}
+    </select>
+    <label class="vellum-label">Category:</label>
+    <select class="vellum-select" data-item-flag="category">
+      {{#each categories}}
+      <option value="{{this}}" {{#if (eq this ../vellumCategory)}}selected{{/if}}>{{capitalize this}}</option>
+      {{/each}}
+    </select>
+  </div>
+
+  {{!-- Damage / Weight (shown for standard items) --}}
+  {{#unless isContainer}}
+  {{#unless isNotepad}}
+  <div class="vellum-item-field-row">
+    <label class="vellum-label">Damage:</label>
+    <input class="vellum-input vellum-input--sm" type="text"
+           data-item-flag="damage" value="{{vellumDamage}}" placeholder="e.g. 1d8" />
+    <label class="vellum-label">Weight:</label>
+    <select class="vellum-select" data-item-flag="weight">
+      <option value=""     {{#unless vellumWeight}}selected{{/unless}}>—</option>
+      <option value="Bulky" {{#if (eq vellumWeight "Bulky")}}selected{{/if}}>Bulky</option>
+      <option value="Petty" {{#if (eq vellumWeight "Petty")}}selected{{/if}}>Petty</option>
+    </select>
+  </div>
+  <div class="vellum-item-field-row">
+    <label class="vellum-label">Equipped:</label>
+    <input type="checkbox" data-item-flag="equipped" {{#if vellumEquipped}}checked{{/if}} />
+  </div>
+  {{/unless}}
+  {{/unless}}
+
+  {{!-- Description --}}
+  <div class="vellum-item-field-row vellum-item-field-row--col">
+    <label class="vellum-label">Description:</label>
+    <textarea class="vellum-textarea vellum-item-desc" name="system.description">{{item.system.description}}</textarea>
+  </div>
+
+  {{!-- Container Fields --}}
+  {{#if isContainer}}
+  <div class="vellum-item-section-header">Container Settings</div>
+  <div class="vellum-item-field-row">
+    <label class="vellum-label">Capacity:</label>
+    <input class="vellum-input vellum-input--sm" type="number"
+           data-item-flag="capacity" value="{{vellumCapacity}}" min="1" max="30" />
+  </div>
+  <div class="vellum-item-hint">Double-click in inventory to open contents.</div>
+  {{/if}}
+
+  {{!-- Notepad Fields --}}
+  {{#if isNotepad}}
+  <div class="vellum-item-section-header">Notepad</div>
+  <div class="vellum-item-hint">Double-click in inventory to open the note editor.</div>
+  {{/if}}
+
+</form>

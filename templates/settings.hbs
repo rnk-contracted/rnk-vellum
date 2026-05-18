@@ -1,0 +1,66 @@
+{{!-- RNK™ Vellum — settings.hbs --}}
+<div class="vellum-settings-form">
+
+  <div class="vellum-settings-section">
+    <div class="vellum-settings-section-title">Portrait Glow</div>
+    <p class="vellum-settings-hint">Controls the underglow on the character portrait, animal deity image, and AC shield.</p>
+
+    <div class="vellum-settings-row">
+      <label for="vellum-glow-color">Glow Color</label>
+      <input type="color" id="vellum-glow-color" name="glowColor" value="{{glowColor}}" />
+      <span class="vellum-settings-value">{{glowColor}}</span>
+    </div>
+
+    <div class="vellum-settings-row">
+      <label for="vellum-glow-blur">Blur Radius</label>
+      <input type="range" id="vellum-glow-blur" name="glowBlur"
+             min="0" max="30" step="1" value="{{glowBlur}}" />
+      <span class="vellum-settings-value">{{glowBlur}}px</span>
+    </div>
+
+    <div class="vellum-settings-row">
+      <label for="vellum-glow-spread">Spread / Inner</label>
+      <input type="range" id="vellum-glow-spread" name="glowSpread"
+             min="0" max="16" step="1" value="{{glowSpread}}" />
+      <span class="vellum-settings-value">{{glowSpread}}px</span>
+    </div>
+  </div>
+
+  <div class="vellum-settings-section">
+    <div class="vellum-settings-section-title">Blessing Tokens</div>
+    <p class="vellum-settings-hint">Color and count of blessing tokens shown on the sheet.</p>
+
+    <div class="vellum-settings-row">
+      <label for="vellum-blessing-color">Token Color</label>
+      <input type="color" id="vellum-blessing-color" name="blessingColor" value="{{blessingColor}}" />
+      <span class="vellum-settings-value">{{blessingColor}}</span>
+    </div>
+
+    <div class="vellum-settings-row">
+      <label>Count</label>
+      <div class="vellum-blessing-count-picker">
+        <button type="button" class="vellum-blessing-count-btn{{#if (eq blessingCount 1)}} active{{/if}}" data-count="1">1</button>
+        <button type="button" class="vellum-blessing-count-btn{{#if (eq blessingCount 2)}} active{{/if}}" data-count="2">2</button>
+        <button type="button" class="vellum-blessing-count-btn{{#if (eq blessingCount 3)}} active{{/if}}" data-count="3">3</button>
+        <input type="hidden" id="vellum-blessing-count" name="blessingCount" value="{{blessingCount}}" />
+      </div>
+    </div>
+
+    <div class="vellum-settings-preview">
+      <div class="vellum-settings-preview-label">Preview (active)</div>
+      <div class="vellum-settings-swatch vellum-settings-swatch--circle" id="vellum-blessing-preview"
+           style="background:{{blessingColor}}"></div>
+    </div>
+  </div>
+
+  <div class="vellum-settings-preview">
+    <div class="vellum-settings-preview-label">Glow Preview</div>
+    <div class="vellum-settings-swatch" id="vellum-glow-preview"></div>
+  </div>
+
+  <div class="vellum-settings-actions">
+    <button type="button" class="vellum-settings-btn" data-action="save">Save</button>
+    <button type="button" class="vellum-settings-btn vellum-settings-btn--ghost" data-action="reset">Reset Defaults</button>
+  </div>
+
+</div>
