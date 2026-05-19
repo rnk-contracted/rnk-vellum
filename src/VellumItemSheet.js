@@ -43,7 +43,7 @@ export class VellumItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       vellumWeight:   this.item.getFlag(MODULE_ID, 'weight')     ?? '',
       vellumCategory: this.item.getFlag(MODULE_ID, 'category')   ?? 'gear',
       vellumEquipped: this.item.getFlag(MODULE_ID, 'equipped')   ?? false,
-      categories:     ['gear', 'weapon', 'armor', 'shield', 'consumable', 'tool', 'misc'],
+      categories:     ['gear', 'weapon', 'armor', 'shield', 'consumable', 'tool', 'spell', 'ability', 'misc'],
       types:          ['standard', 'container', 'notepad'],
       moduleId:       MODULE_ID
     };

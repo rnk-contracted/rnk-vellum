@@ -4,7 +4,7 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { getVellumData, setVellumData, buildStats, MODULE_ID } from './VellumDataModel.js';
+import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES } from './VellumDataModel.js';
 import { VellumSheetEvents } from './VellumSheetEvents.js';
 import { toggleTokenGlow, refreshActorTokens } from './VellumTokenGlow.js';
 
@@ -75,6 +75,9 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const actorFlags    = this.actor.getFlag(MODULE_ID, 'actorSettings') ?? {};
     const blessingCount = actorFlags.blessingCount ?? (game.settings.get(MODULE_ID, 'blessingCount') ?? 3);
 
+    // Only physical (non-weightless) items consume inventory slots
+    const inventoryUsed = inventory.filter(i => !i.isWeightless).length;
+
     return {
       actor:           this.actor,
       vellum,
@@ -82,7 +85,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       statsRight:      buildStats(vellum, ['int', 'wis', 'cha']),
       inventory,
       inventoryGroups,
-      inventoryUsed:   inventory.length,
+      inventoryUsed,
       inventoryMax:    invMax,
       charmItem,
       bgSections,
@@ -125,6 +128,14 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const capacity = it.getFlag(MODULE_ID, 'capacity') ?? null;
       const used     = it.getFlag(MODULE_ID, 'used')     ?? null;
 
+      // Weightless: spell/ability categories don't consume inventory slots
+      const isWeightless = WEIGHTLESS_CATEGORIES.has(category);
+
+      // Rollable: weapons + spells/abilities + anything with a damage formula
+      const hasFormula = !!(damage || it.system?.damage?.formula
+        || it.system?.damage?.parts?.length);
+      const isRollable = ROLLABLE_CATEGORIES.has(category) || hasFormula;
+
       // Build tags array for display
       const tags = [];
       if (damage)  tags.push(damage);
@@ -140,6 +151,8 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         isContainer: type === 'container',
         isNotepad:   type === 'notepad',
         isWeapon:    category === 'weapon',
+        isWeightless,
+        isRollable,
         equipped,
         damage,
         weight,
@@ -154,7 +167,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
   _groupInventory(inventory) {
     // Default category order — can be reordered by the user
-    const DEFAULT_ORDER = ['weapon', 'armor', 'shield', 'consumable', 'tool', 'container', 'notepad', 'misc', 'gear'];
+    const DEFAULT_ORDER = ['weapon', 'armor', 'shield', 'consumable', 'tool', 'spell', 'ability', 'container', 'notepad', 'misc', 'gear'];
     const saved = this.actor.getFlag(MODULE_ID, 'groupOrder');
     const order = Array.isArray(saved) ? saved : DEFAULT_ORDER;
 
@@ -170,13 +183,23 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const groups = [];
     for (const cat of order) {
       if (buckets.has(cat)) {
-        groups.push({ category: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1), items: buckets.get(cat) });
+        groups.push({
+          category:   cat,
+          label:      cat.charAt(0).toUpperCase() + cat.slice(1),
+          items:      buckets.get(cat),
+          isWeightless: WEIGHTLESS_CATEGORIES.has(cat)
+        });
         buckets.delete(cat);
       }
     }
     // Any leftover categories not in the order list
     for (const [cat, items] of buckets) {
-      groups.push({ category: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1), items });
+      groups.push({
+        category:   cat,
+        label:      cat.charAt(0).toUpperCase() + cat.slice(1),
+        items,
+        isWeightless: WEIGHTLESS_CATEGORIES.has(cat)
+      });
     }
 
     return groups;

@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] — 2026-05-19
+
+### Added
+- **Shadowdark RPG native rolls** — weapon rolls delegate to the system's own `item.roll()` so Shadowdark dice chains, critical hits, and chat cards all work correctly.
+- **Spell / ability manual roll path** — spells and abilities that have no native roll method now use a `1d20 + WIS` manual roll, ensuring dice always appear in chat.
+- **`isRollable` inventory flag** — weapons, spells, abilities, and any item with a saved damage formula all show the roll button in the inventory row.
+- **Weightless inventory categories** — spells and abilities are excluded from the 20-slot inventory count and displayed in a distinct gold-accented group.
+- **Split Add ▾ dropdown** — the Add button now reveals an Item / Container / Notepad menu so the correct item type is created in one click.
+- **Spell and Ability categories** in the VellumItemSheet category picker.
+
+### Changed
+- **Default sheet** — `VellumActorSheet` is now `makeDefault: true`; Vellum opens automatically for all actors without manual sheet switching.
+- **Stat modifier display** — modifier is auto-computed from the score (`⌊(score−10)/2⌋`) and shown as a read-only span; the editable modifier field is removed.
+- **Item add / edit** — opening an item always opens `VellumItemSheet` (ApplicationV2) directly, eliminating Shadowdark `ItemSheetSD` V1 deprecation warnings.
+- **Grid layout** — middle row simplified to AC Shield + Stats; the standalone Abilities column is removed.
+
+### Fixed
+- `try/catch` around `item.roll()` was silently swallowing weapon roll exceptions; removed so Shadowdark rolls fire correctly.
+- `game.settings.get('core', 'rollMode')` removed from `toMessage()` call — was a potential throw point in Foundry v13/v14.
+- Spell formula falling back to `'1d20'` default and weapon formula falling back to `'1d6'` default when no system or flag formula is present.
+
+---
+
 ## [1.1.0] — 2026-05-17
 
 ### Added

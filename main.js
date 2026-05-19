@@ -22,7 +22,7 @@ Hooks.once('init', async () => {
   registerSettings();
 
   foundry.documents.collections.Actors.registerSheet(MODULE_ID, VellumActorSheet, {
-    makeDefault: false,
+    makeDefault: true,
     label: 'RNK™ Vellum'
   });
 

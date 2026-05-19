@@ -336,7 +336,7 @@
 /* ── MIDDLE ROW ──────────────────────────────────────────────────────────── */
 .vellum-middle {
   display: grid;
-  grid-template-columns: 80px 260px 1fr;
+  grid-template-columns: 80px 1fr;
   gap: 6px;
   border: 1px solid var(--vellum-border);
   padding: 6px;
@@ -451,6 +451,14 @@
   font-family: var(--vellum-font-body);
   font-size: 0.85rem;
   padding: 1px 2px;
+}
+
+/* Computed mod: read-only span that matches the input appearance */
+.vellum-stat-mod--computed {
+  display: inline-block;
+  border-bottom: 1px solid transparent;
+  cursor: default;
+  user-select: none;
 }
 
 .vellum-stat-score:focus,
@@ -894,6 +902,16 @@
 
 .vellum-inv-group:last-child { border-bottom: none; }
 
+/* Weightless groups (spell / ability) — gold tint, italic label, left accent */
+.vellum-inv-group--weightless .vellum-inv-group-header {
+  background: color-mix(in srgb, var(--vellum-parchment-dk) 85%, #c8a830 15%);
+  border-left: 3px solid #c8a830;
+}
+.vellum-inv-group--weightless .vellum-inv-group-label {
+  font-style: italic;
+  color: #7a5c10;
+}
+
 .vellum-inv-group--dragging {
   opacity: 0.45;
 }
@@ -942,6 +960,42 @@
 }
 
 /* ── Inventory Right-Click Context Menu ──────────────────────────────────── */
+
+/* Split Add button dropdown */
+.vellum-inv-add-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.vellum-inv-add-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 110px;
+  background: var(--vellum-parchment-dk, #f5f0e8);
+  border: 1px solid var(--vellum-border, #b8a98a);
+  border-radius: 3px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.35);
+  z-index: 100;
+  padding: 3px 0;
+}
+
+.vellum-inv-add-option {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--vellum-font-body);
+  font-size: 0.82rem;
+  color: var(--vellum-ink);
+}
+.vellum-inv-add-option:hover {
+  background: rgba(139, 26, 26, 0.1);
+  color: #8b1a1a;
+}
 .vellum-context-menu {
   background: #f5f0e8;
   border: 1px solid #b8a98a;

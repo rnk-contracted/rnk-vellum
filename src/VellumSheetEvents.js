@@ -4,7 +4,7 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { setVellumData, getVellumData, MODULE_ID } from './VellumDataModel.js';
+import { setVellumData, getVellumData, MODULE_ID, WEIGHTLESS_CATEGORIES } from './VellumDataModel.js';
 import { UIManager } from './UIManager.js';
 
 export class VellumSheetEvents {
@@ -38,17 +38,13 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onBlessingToggle(e, actor))
     );
 
-    // Ability table — add / remove
-    q('.vellum-ability-add')
-      ?.addEventListener('click', () => VellumSheetEvents._onAbilityAdd(actor));
-
-    qa('.vellum-ability-remove').forEach(node =>
-      node.addEventListener('click', e => VellumSheetEvents._onAbilityRemove(e, actor))
-    );
-
-    // Inventory — add item
+    // Inventory — split add button (toggle menu) + menu options
     q('.vellum-inv-add')
-      ?.addEventListener('click', () => VellumSheetEvents._onItemAdd(actor));
+      ?.addEventListener('click', e => VellumSheetEvents._onAddMenuToggle(e));
+
+    qa('.vellum-inv-add-option').forEach(node =>
+      node.addEventListener('click', e => VellumSheetEvents._onItemAdd(e, actor))
+    );
 
     // Inventory — left-click item name opens sheet / sub-window
     qa('.vellum-item-name').forEach(node =>
@@ -140,28 +136,43 @@ export class VellumSheetEvents {
     return setVellumData(actor, { blessings: { [key]: !current } });
   }
 
-  static async _onAbilityAdd(actor) {
-    const vellum    = getVellumData(actor);
-    const abilities = [...(vellum.abilities ?? []), { name: '', description: '', extra: '' }];
-    return setVellumData(actor, { abilities });
+  static _onAddMenuToggle(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const btn  = event.currentTarget;
+    const menu = btn.parentElement?.querySelector('.vellum-inv-add-menu');
+    if (!menu) return;
+    const hidden = menu.hasAttribute('hidden');
+    menu.toggleAttribute('hidden', !hidden);
+    if (hidden) {
+      const dismiss = ev => {
+        if (!menu.contains(ev.target) && ev.target !== btn) {
+          menu.setAttribute('hidden', '');
+          document.removeEventListener('mousedown', dismiss);
+        }
+      };
+      setTimeout(() => document.addEventListener('mousedown', dismiss), 0);
+    }
   }
 
-  static async _onAbilityRemove(event, actor) {
-    const idx       = parseInt(event.currentTarget.dataset.index);
-    const vellum    = getVellumData(actor);
-    const abilities = [...(vellum.abilities ?? [])];
-    abilities.splice(idx, 1);
-    return setVellumData(actor, { abilities });
-  }
-
-  static async _onItemAdd(actor) {
+  static async _onItemAdd(event, actor) {
+    event.preventDefault();
+    const invType = event.currentTarget.dataset.invType ?? 'standard';
     const validTypes = game.documentTypes?.Item?.filter(t => t !== 'base') ?? [];
-    const type = validTypes[0] ?? (game.system.id === 'dnd5e' ? 'equipment' : 'item');
-    const [created] = await actor.createEmbeddedDocuments('Item', [{ name: 'New Item', type }]);
-    if (created) created.sheet.render(true);
+    const type = validTypes[0] ?? 'item';
+    const nameMap = { container: 'New Container', notepad: 'New Notepad' };
+    const [created] = await actor.createEmbeddedDocuments('Item', [{
+      name: nameMap[invType] ?? 'New Item',
+      type
+    }]);
+    if (!created) return;
+    if (invType !== 'standard') await created.setFlag(MODULE_ID, 'type', invType);
+    // Open our V2 sheet explicitly — avoids Shadowdark’s V1 ItemSheetSD
+    const { VellumItemSheet } = await import('./VellumItemSheet.js');
+    new VellumItemSheet(created).render({ force: true });
   }
 
-  static _onItemClick(event, actor) {
+  static async _onItemClick(event, actor) {
     event.preventDefault();
     const row    = event.currentTarget.closest('[data-item-id]');
     const itemId = row?.dataset.itemId;
@@ -173,7 +184,9 @@ export class VellumSheetEvents {
     const type = item.getFlag(MODULE_ID, 'type');
     if (type === 'container') return UIManager.openContainer(item, actor);
     if (type === 'notepad')   return UIManager.openNotepad(item, actor);
-    item.sheet.render(true);
+    // Open our V2 sheet explicitly — avoids Shadowdark’s V1 ItemSheetSD
+    const { VellumItemSheet } = await import('./VellumItemSheet.js');
+    new VellumItemSheet(item).render({ force: true });
   }
 
   static _onItemContext(event, actor, sheet) {
@@ -244,13 +257,40 @@ export class VellumSheetEvents {
     const row    = event.currentTarget.closest('[data-item-id]');
     const itemId = row?.dataset.itemId;
     if (!itemId) return;
-    const item   = actor.items.get(itemId);
+    const item = actor.items.get(itemId);
     if (!item) return;
-    const damage = item.getFlag(MODULE_ID, 'damage') ?? '1d6';
-    const roll   = await new Roll(damage).evaluate();
-    roll.toMessage({
+
+    const category  = item.getFlag(MODULE_ID, 'category') ?? 'gear';
+    const isSpell   = WEIGHTLESS_CATEGORIES.has(category);
+
+    // Weapons / physical items: delegate to the system-native roll when present.
+    // Do NOT wrap in try-catch — let any system error surface in the console.
+    if (!isSpell) {
+      if (typeof item.roll === 'function') return item.roll();
+      if (typeof item.use  === 'function') return item.use();
+    }
+
+    // Manual roll path (spells, abilities, and anything without a native roll).
+    const vellum = getVellumData(actor);
+
+    // Formula: vellum flag first (user-set), then system paths, then default
+    const flagFormula = item.getFlag(MODULE_ID, 'damage') || '';
+    const sysFormula  = item.system?.damage?.formula
+      || item.system?.damage?.parts?.[0]?.[0]
+      || item.system?.formula
+      || '';
+    const baseFormula = flagFormula || sysFormula || (isSpell ? '1d20' : '1d6');
+
+    // Modifier: WIS for spells/abilities, STR for weapons/gear
+    const statKey  = isSpell ? 'wis' : 'str';
+    const modScore = vellum[statKey]?.score ?? 10;
+    const mod      = Math.floor((modScore - 10) / 2);
+    const formula  = mod !== 0 ? `${baseFormula} + ${mod}` : baseFormula;
+
+    const roll = await new Roll(formula).evaluate();
+    await roll.toMessage({
       speaker: ChatMessage.getSpeaker({ actor }),
-      flavor:  `${actor.name} — ${item.name}`
+      flavor:  `${actor.name} \u2014 ${item.name}`
     });
   }
 
