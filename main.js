@@ -79,6 +79,15 @@ Hooks.on('refreshToken', async (token) => {
 Hooks.on('updateActor', async (actor) => {
   const { refreshActorTokens } = await import('./src/VellumTokenGlow.js');
   refreshActorTokens(actor);
+
+  // Re-render any open Vellum sheet for this actor so AC and stats stay live.
+  // Shadowdark derives AC from equipped armor + DEX, so the sheet must re-read
+  // system values after every actor update rather than caching stale vellum data.
+  for (const app of Object.values(actor.apps ?? {})) {
+    if (app.constructor?.name === 'VellumActorSheet' && app.rendered) {
+      app.render();
+    }
+  }
 });
 
 // When any item is created on an actor, auto-assign slot + category if missing

@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.1] — 2026-05-27
+
+### Fixed
+- **AC now reflects live Shadowdark value** — the sheet no longer attempts to write back to `system.attributes.ac`, which Shadowdark overwrites immediately as a derived value (base armor + DEX mod). AC on the shield always shows what the system computed.
+- **Sheet re-renders on `updateActor`** — any open Vellum sheet now re-renders whenever the actor is updated (e.g. equipping armor changes AC, a system-side HP change), keeping all displayed values in sync without closing and reopening the sheet.
+- **STR score change updates inventory max immediately** — stat score writes to `system.abilities.str.value` correctly so Shadowdark's derived values (inventory capacity, modifiers used in attack rolls) respond in real time.
+
+---
+
 ## [1.2.0] — 2026-05-19
 
 ### Added

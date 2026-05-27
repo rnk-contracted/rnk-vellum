@@ -105,15 +105,9 @@ async function _syncSystemFields(actor, vellumData) {
     updates['system.attributes.hp.max']   = vellumData.hp?.max   ?? 0;
   }
 
-  // AC — handle both object and scalar
-  if (actor.system?.attributes?.ac !== undefined) {
-    const acVal = parseInt(vellumData.ac) || 10;
-    if (typeof actor.system.attributes.ac === 'object') {
-      updates['system.attributes.ac.value'] = acVal;
-    } else {
-      updates['system.attributes.ac'] = acVal;
-    }
-  }
+  // AC is a derived/computed value in Shadowdark (armor + DEX mod) — do not write
+  // back to system.attributes.ac as the system recalculates and overwrites it.
+  // The sheet always reads AC from the system via getVellumData's bridge above.
 
   // Stat scores
   if (actor.system?.abilities !== undefined) {
