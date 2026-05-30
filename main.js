@@ -115,7 +115,8 @@ Hooks.on('createItem', async (item) => {
     const t = (item.type ?? '').toLowerCase();
     const n = (item.name ?? '').toLowerCase();
     let category = 'gear';
-    if (t === 'weapon')                                           category = 'weapon';
+    if (t === 'spell')                                            category = 'spell';
+    else if (t === 'weapon')                                      category = 'weapon';
     else if (t === 'armor' || t === 'equipment')                  category = 'armor';
     else if (t === 'consumable' || t === 'potion' || t === 'scroll') category = 'consumable';
     else if (t === 'tool')                                        category = 'tool';

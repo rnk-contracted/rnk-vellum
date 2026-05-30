@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.2] — 2026-05-29
+
+### Fixed
+- **Spells auto-categorize correctly** — items with `type === 'spell'` now map to the `spell` category on drop, making them weightless (no inventory slot consumed) and showing the roll button.
+- **Equipping armor now updates AC** — the equip toggle now also writes `system.equipped = true/false` on the item document itself so Shadowdark recalculates AC from equipped armor + DEX modifier.
+- **CON change no longer interferes with HP max** — HP max is derived by Shadowdark from CON + level/class and was being overwritten by our sync. We now only write `hp.value` (current HP) back to the system; `hp.max` is always read from the system.
+- **Container opens on creation and edit** — clicking "+ Add → Container" now opens the container sub-inventory window immediately instead of the item config sheet. The edit pencil on container rows also opens the container window.
+- **Weapon rolls use Shadowdark's native attack dialog** — roll button now calls `item.rollAttack()` first (Shadowdark's method that shows the advantage/normal/disadvantage dialog with attack + conditional damage), falling back to `item.roll()` and `item.use()` for other systems.
+
+---
+
 ## [1.2.1] — 2026-05-27
 
 ### Fixed

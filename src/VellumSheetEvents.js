@@ -157,35 +157,40 @@ export class VellumSheetEvents {
 
   static async _onItemAdd(event, actor) {
     event.preventDefault();
-    const invType = event.currentTarget.dataset.invType ?? 'standard';
-    const validTypes = game.documentTypes?.Item?.filter(t => t !== 'base') ?? [];
-    const type = validTypes[0] ?? 'item';
-    const nameMap = { container: 'New Container', notepad: 'New Notepad' };
-    const [created] = await actor.createEmbeddedDocuments('Item', [{
-      name: nameMap[invType] ?? 'New Item',
+    const invType = event.currentTarget.dataset.invType ?? ‘standard’;
+    const validTypes = game.documentTypes?.Item?.filter(t => t !== ‘base’) ?? [];
+    const type = validTypes[0] ?? ‘item’;
+    const nameMap = { container: ‘New Container’, notepad: ‘New Notepad’ };
+    const [created] = await actor.createEmbeddedDocuments(‘Item’, [{
+      name: nameMap[invType] ?? ‘New Item’,
       type
     }]);
     if (!created) return;
-    if (invType !== 'standard') await created.setFlag(MODULE_ID, 'type', invType);
-    // Open our V2 sheet explicitly — avoids Shadowdark’s V1 ItemSheetSD
-    const { VellumItemSheet } = await import('./VellumItemSheet.js');
+    if (invType !== ‘standard’) await created.setFlag(MODULE_ID, ‘type’, invType);
+
+    // Containers open the sub-inventory window; notepads open the note editor;
+    // standard items open the VellumItemSheet config.
+    if (invType === ‘container’) return UIManager.openContainer(created, actor);
+    if (invType === ‘notepad’)   return UIManager.openNotepad(created, actor);
+    const { VellumItemSheet } = await import(‘./VellumItemSheet.js’);
     new VellumItemSheet(created).render({ force: true });
   }
 
   static async _onItemClick(event, actor) {
     event.preventDefault();
-    const row    = event.currentTarget.closest('[data-item-id]');
+    const row    = event.currentTarget.closest(‘[data-item-id]’);
     const itemId = row?.dataset.itemId;
     if (!itemId) return;
 
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    const type = item.getFlag(MODULE_ID, 'type');
-    if (type === 'container') return UIManager.openContainer(item, actor);
-    if (type === 'notepad')   return UIManager.openNotepad(item, actor);
+    const vellumType = item.getFlag(MODULE_ID, ‘type’);
+    // Containers and notepads always open their sub-window (both name click and edit pencil)
+    if (vellumType === ‘container’) return UIManager.openContainer(item, actor);
+    if (vellumType === ‘notepad’)   return UIManager.openNotepad(item, actor);
     // Open our V2 sheet explicitly — avoids Shadowdark’s V1 ItemSheetSD
-    const { VellumItemSheet } = await import('./VellumItemSheet.js');
+    const { VellumItemSheet } = await import(‘./VellumItemSheet.js’);
     new VellumItemSheet(item).render({ force: true });
   }
 
@@ -248,7 +253,13 @@ export class VellumSheetEvents {
     const item    = actor.items.get(itemId);
     if (!item) return;
     const current = item.getFlag(MODULE_ID, 'equipped') ?? false;
-    return item.setFlag(MODULE_ID, 'equipped', !current);
+    const next    = !current;
+    // Write vellum flag for display and also system.equipped so Shadowdark
+    // recalculates AC from equipped armor and DEX modifier correctly.
+    const sysUpdate = {};
+    if (item.system?.equipped !== undefined) sysUpdate['system.equipped'] = next;
+    await item.setFlag(MODULE_ID, 'equipped', next);
+    if (Object.keys(sysUpdate).length) await item.update(sysUpdate);
   }
 
   static async _onItemRoll(event, actor) {
@@ -264,10 +275,12 @@ export class VellumSheetEvents {
     const isSpell   = WEIGHTLESS_CATEGORIES.has(category);
 
     // Weapons / physical items: delegate to the system-native roll when present.
-    // Do NOT wrap in try-catch — let any system error surface in the console.
+    // Shadowdark exposes item.rollAttack() which shows the advantage dialog and
+    // handles damage on hit. Fall back to item.roll() then item.use() for other systems.
     if (!isSpell) {
-      if (typeof item.roll === 'function') return item.roll();
-      if (typeof item.use  === 'function') return item.use();
+      if (typeof item.rollAttack === 'function') return item.rollAttack();
+      if (typeof item.roll       === 'function') return item.roll();
+      if (typeof item.use        === 'function') return item.use();
     }
 
     // Manual roll path (spells, abilities, and anything without a native roll).
