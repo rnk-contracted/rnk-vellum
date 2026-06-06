@@ -1,49 +1,41 @@
 /**
- * RNK™ Vellum — main.js
+ * RNK Vellum - main.js
  * Bootstrap entry point.
- * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
+ * Copyright 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
+
+import { VellumActorSheet } from './src/VellumActorSheet.js';
+import { VellumItemSheet } from './src/VellumItemSheet.js';
+import { registerSettings, applyGlowVars } from './src/VellumSettings.js';
 
 const MODULE_ID = 'rnk-vellum';
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
 
-Hooks.once('init', async () => {
-  const [
-    { VellumActorSheet },
-    { VellumItemSheet },
-    { registerSettings }
-  ] = await Promise.all([
-    import('./src/VellumActorSheet.js'),
-    import('./src/VellumItemSheet.js'),
-    import('./src/VellumSettings.js')
-  ]);
-
+Hooks.once('init', () => {
   registerSettings();
 
   foundry.documents.collections.Actors.registerSheet(MODULE_ID, VellumActorSheet, {
     makeDefault: true,
-    label: 'RNK™ Vellum'
+    label: 'RNK Vellum'
   });
 
   foundry.documents.collections.Items.registerSheet(MODULE_ID, VellumItemSheet, {
     makeDefault: false,
-    label: 'RNK™ Vellum Item'
+    label: 'RNK Vellum Item'
   });
-
 });
 
-Hooks.once('ready', async () => {
-  const { applyGlowVars } = await import('./src/VellumSettings.js');
+Hooks.once('ready', () => {
   applyGlowVars();
 });
 
-// Scene control button — GM only, opens the Vellum GM Hub
+// Scene control button - GM only, opens the Vellum GM Hub
 Hooks.on('getSceneControlButtons', (controls) => {
   if (!game.user.isGM) return;
   const tool = {
     name:    'rnk-vellum-hub',
-    title:   'RNK™ Vellum — GM Hub',
+    title:   'RNK Vellum - GM Hub',
     icon:    'fas fa-feather-alt',
     button:  true,
     toggle:  false,
@@ -55,7 +47,7 @@ Hooks.on('getSceneControlButtons', (controls) => {
   };
   const control = {
     name:    MODULE_ID,
-    title:   'RNK™ Vellum',
+    title:   'RNK Vellum',
     icon:    'fas fa-feather-alt',
     order:   16,
     layer:   'token',
@@ -136,4 +128,3 @@ Hooks.on('createItem', async (item) => {
     await item.update(updates);
   }
 });
-

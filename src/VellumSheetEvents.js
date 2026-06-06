@@ -157,40 +157,40 @@ export class VellumSheetEvents {
 
   static async _onItemAdd(event, actor) {
     event.preventDefault();
-    const invType = event.currentTarget.dataset.invType ?? ‘standard’;
-    const validTypes = game.documentTypes?.Item?.filter(t => t !== ‘base’) ?? [];
-    const type = validTypes[0] ?? ‘item’;
-    const nameMap = { container: ‘New Container’, notepad: ‘New Notepad’ };
-    const [created] = await actor.createEmbeddedDocuments(‘Item’, [{
-      name: nameMap[invType] ?? ‘New Item’,
+    const invType = event.currentTarget.dataset.invType ?? 'standard';
+    const validTypes = game.documentTypes?.Item?.filter(t => t !== 'base') ?? [];
+    const type = validTypes[0] ?? 'item';
+    const nameMap = { container: 'New Container', notepad: 'New Notepad' };
+    const [created] = await actor.createEmbeddedDocuments('Item', [{
+      name: nameMap[invType] ?? 'New Item',
       type
     }]);
     if (!created) return;
-    if (invType !== ‘standard’) await created.setFlag(MODULE_ID, ‘type’, invType);
+    if (invType !== 'standard') await created.setFlag(MODULE_ID, 'type', invType);
 
     // Containers open the sub-inventory window; notepads open the note editor;
     // standard items open the VellumItemSheet config.
-    if (invType === ‘container’) return UIManager.openContainer(created, actor);
-    if (invType === ‘notepad’)   return UIManager.openNotepad(created, actor);
-    const { VellumItemSheet } = await import(‘./VellumItemSheet.js’);
+    if (invType === 'container') return UIManager.openContainer(created, actor);
+    if (invType === 'notepad')   return UIManager.openNotepad(created, actor);
+    const { VellumItemSheet } = await import('./VellumItemSheet.js');
     new VellumItemSheet(created).render({ force: true });
   }
 
   static async _onItemClick(event, actor) {
     event.preventDefault();
-    const row    = event.currentTarget.closest(‘[data-item-id]’);
+    const row    = event.currentTarget.closest('[data-item-id]');
     const itemId = row?.dataset.itemId;
     if (!itemId) return;
 
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    const vellumType = item.getFlag(MODULE_ID, ‘type’);
+    const vellumType = item.getFlag(MODULE_ID, 'type');
     // Containers and notepads always open their sub-window (both name click and edit pencil)
-    if (vellumType === ‘container’) return UIManager.openContainer(item, actor);
-    if (vellumType === ‘notepad’)   return UIManager.openNotepad(item, actor);
+    if (vellumType === 'container') return UIManager.openContainer(item, actor);
+    if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
     // Open our V2 sheet explicitly — avoids Shadowdark’s V1 ItemSheetSD
-    const { VellumItemSheet } = await import(‘./VellumItemSheet.js’);
+    const { VellumItemSheet } = await import('./VellumItemSheet.js');
     new VellumItemSheet(item).render({ force: true });
   }
 

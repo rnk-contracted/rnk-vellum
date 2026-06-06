@@ -56,10 +56,15 @@ export function registerSettings() {
 
 /** Read saved settings and inject them as CSS vars on all .rnk-vellum elements. */
 export async function applyGlowVars() {
-  const color    = game.settings.get(MODULE_ID, 'glowColor');
-  const blur     = game.settings.get(MODULE_ID, 'glowBlur');
-  const spread   = game.settings.get(MODULE_ID, 'glowSpread');
-  const blessing = game.settings.get(MODULE_ID, 'blessingColor');
+  const hasGlowColor    = game.settings.settings.has(`${MODULE_ID}.glowColor`);
+  const hasGlowBlur     = game.settings.settings.has(`${MODULE_ID}.glowBlur`);
+  const hasGlowSpread   = game.settings.settings.has(`${MODULE_ID}.glowSpread`);
+  const hasBlessingColor = game.settings.settings.has(`${MODULE_ID}.blessingColor`);
+
+  const color    = hasGlowColor ? game.settings.get(MODULE_ID, 'glowColor') : DEFAULTS.glowColor;
+  const blur     = hasGlowBlur ? game.settings.get(MODULE_ID, 'glowBlur') : DEFAULTS.glowBlur;
+  const spread   = hasGlowSpread ? game.settings.get(MODULE_ID, 'glowSpread') : DEFAULTS.glowSpread;
+  const blessing = hasBlessingColor ? game.settings.get(MODULE_ID, 'blessingColor') : DEFAULTS.blessingColor;
 
   // Write to root so newly-opened sheets inherit immediately
   document.documentElement.style.setProperty('--vellum-glow-color',   color);
