@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.4] - 2026-06-06
+
+### Fixed
+- Container items now open their contents window when created or edited, and the container template can render slot numbers reliably.
+- Spells now auto-classify as `spell`, do not consume inventory slots, and show the roll button again on the actor sheet.
+- Weapon rolls now prefer the Shadowdark native attack flow before falling back, so they show the system's attack handling instead of a generic manual roll.
+
 ## [1.2.3] - 2026-06-06
 
 ### Fixed

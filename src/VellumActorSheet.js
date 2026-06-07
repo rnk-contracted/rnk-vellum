@@ -117,7 +117,11 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const slots = [];
     let autoSlot = 1000; // high number so auto-slotted items sort after manually slotted ones
     for (const it of this.actor.items.contents) {
-      const category = it.getFlag(MODULE_ID, 'category') ?? 'gear';
+      const flagCategory = it.getFlag(MODULE_ID, 'category') ?? 'gear';
+      const inferredCategory = flagCategory === 'gear'
+        ? ((it.type ?? '').toLowerCase() === 'spell' ? 'spell' : flagCategory)
+        : flagCategory;
+      const category = inferredCategory;
       // Items in trait/talent/knowledge/charm categories are shown elsewhere, not in inventory
       if (TRAIT_CATEGORIES.has(category)) continue;
       const slot = it.getFlag(MODULE_ID, 'slot') ?? autoSlot++;

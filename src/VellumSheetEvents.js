@@ -274,13 +274,19 @@ export class VellumSheetEvents {
     const category  = item.getFlag(MODULE_ID, 'category') ?? 'gear';
     const isSpell   = WEIGHTLESS_CATEGORIES.has(category);
 
-    // Weapons / physical items: delegate to the system-native roll when present.
-    // Shadowdark exposes item.rollAttack() which shows the advantage dialog and
-    // handles damage on hit. Fall back to item.roll() then item.use() for other systems.
+    // Weapons should use the system's own attack flow so Shadowdark can show
+    // its advantage/normal/disadvantage prompt and native damage handling.
+    if (category === 'weapon') {
+      if (typeof item.roll === 'function') return item.roll();
+      if (typeof item.rollAttack === 'function') return item.rollAttack();
+      if (typeof item.use === 'function') return item.use();
+    }
+
+    // Other physical items can still use system-native methods when present.
     if (!isSpell) {
       if (typeof item.rollAttack === 'function') return item.rollAttack();
-      if (typeof item.roll       === 'function') return item.roll();
-      if (typeof item.use        === 'function') return item.use();
+      if (typeof item.roll === 'function') return item.roll();
+      if (typeof item.use === 'function') return item.use();
     }
 
     // Manual roll path (spells, abilities, and anything without a native roll).

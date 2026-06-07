@@ -11,6 +11,27 @@ import { registerSettings, applyGlowVars } from './src/VellumSettings.js';
 const MODULE_ID = 'rnk-vellum';
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
+Handlebars.registerHelper('add', (a, b) => Number(a) + Number(b));
+
+function inferVellumCategory(item) {
+  const t = (item.type ?? '').toLowerCase();
+  const n = (item.name ?? '').toLowerCase();
+  if (t === 'spell') return 'spell';
+  if (t === 'weapon') return 'weapon';
+  if (t === 'armor' || t === 'equipment') return 'armor';
+  if (t === 'consumable' || t === 'potion' || t === 'scroll') return 'consumable';
+  if (t === 'tool') return 'tool';
+  if (t === 'shield') return 'shield';
+  if (t === 'loot' || t === 'treasure') return 'misc';
+  if (n.includes('armor') || n.includes('mail') || n.includes('plate') || n.includes('leather')) return 'armor';
+  if (n.includes('shield')) return 'shield';
+  if (n.includes('sword') || n.includes('axe') || n.includes('bow') ||
+      n.includes('dagger') || n.includes('spear') || n.includes('mace') ||
+      n.includes('club') || n.includes('staff') || n.includes('warhammer')) return 'weapon';
+  if (n.includes('potion') || n.includes('scroll') || n.includes('ration') ||
+      n.includes('torch') || n.includes('oil')) return 'consumable';
+  return 'gear';
+}
 
 Hooks.once('init', () => {
   registerSettings();
@@ -104,24 +125,7 @@ Hooks.on('createItem', async (item) => {
 
   // Assign category if missing
   if (item.getFlag(MODULE_ID, 'category') == null) {
-    const t = (item.type ?? '').toLowerCase();
-    const n = (item.name ?? '').toLowerCase();
-    let category = 'gear';
-    if (t === 'spell')                                            category = 'spell';
-    else if (t === 'weapon')                                      category = 'weapon';
-    else if (t === 'armor' || t === 'equipment')                  category = 'armor';
-    else if (t === 'consumable' || t === 'potion' || t === 'scroll') category = 'consumable';
-    else if (t === 'tool')                                        category = 'tool';
-    else if (t === 'shield')                                      category = 'shield';
-    else if (t === 'loot' || t === 'treasure')                    category = 'misc';
-    else if (n.includes('armor') || n.includes('mail') || n.includes('plate') || n.includes('leather')) category = 'armor';
-    else if (n.includes('shield'))                                category = 'shield';
-    else if (n.includes('sword') || n.includes('axe') || n.includes('bow') ||
-             n.includes('dagger') || n.includes('spear') || n.includes('mace') ||
-             n.includes('club') || n.includes('staff') || n.includes('warhammer')) category = 'weapon';
-    else if (n.includes('potion') || n.includes('scroll') || n.includes('ration') ||
-             n.includes('torch') || n.includes('oil'))            category = 'consumable';
-    updates[`flags.${MODULE_ID}.category`] = category;
+    updates[`flags.${MODULE_ID}.category`] = inferVellumCategory(item);
   }
 
   if (Object.keys(updates).length) {

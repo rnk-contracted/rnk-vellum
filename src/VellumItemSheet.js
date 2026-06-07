@@ -5,6 +5,7 @@
  */
 
 import { MODULE_ID } from './VellumDataModel.js';
+import { UIManager } from './UIManager.js';
 
 const { ItemSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -75,6 +76,8 @@ export class VellumItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   async _onTypeChange(event) {
     const type = event.currentTarget.value;
     await this.item.setFlag(MODULE_ID, 'type', type);
+    if (type === 'container') return UIManager.openContainer(this.item, this.item.parent);
+    if (type === 'notepad') return UIManager.openNotepad(this.item, this.item.parent);
     this.render();
   }
 }
