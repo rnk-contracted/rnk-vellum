@@ -103,6 +103,21 @@ Hooks.on('updateActor', async (actor) => {
   }
 });
 
+Hooks.on('preUpdateItem', (item) => {
+  item._vellumPreviousContainerId = item.getFlag(MODULE_ID, 'containerId') ?? null;
+});
+
+Hooks.on('updateItem', async (item) => {
+  const { UIManager } = await import('./src/UIManager.js');
+  UIManager.refreshForItem(item, item._vellumPreviousContainerId ?? null);
+  item._vellumPreviousContainerId = null;
+});
+
+Hooks.on('deleteItem', async (item) => {
+  const { UIManager } = await import('./src/UIManager.js');
+  UIManager.refreshForItem(item, item.getFlag(MODULE_ID, 'containerId') ?? null);
+});
+
 // When any item is created on an actor, auto-assign slot + category if missing
 Hooks.on('createItem', async (item) => {
   const actor = item.parent;

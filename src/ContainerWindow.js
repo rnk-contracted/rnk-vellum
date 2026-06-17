@@ -5,7 +5,7 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { MODULE_ID } from './VellumDataModel.js';
+import { MODULE_ID, CONTAINER_ID_FLAG } from './VellumDataModel.js';
 import { UIManager }  from './UIManager.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -40,19 +40,30 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
 
   async _prepareContext(options) {
     const capacity = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
-    const raw      = this._item.getFlag(MODULE_ID, 'contents') ?? [];
-
-    // Pad contents array to match capacity
-    const contents = Array.from({ length: capacity }, (_, i) => ({
-      index: i,
-      label: raw[i]?.label ?? ''
-    }));
+    const entries  = this._getContentEntries();
+    const total     = Math.max(capacity, entries.length);
+    const slots     = Array.from({ length: total }, (_, i) => {
+      const entry = entries[i] ?? null;
+      const itemId = entry?.itemId ?? ContainerWindow._entryItemId(entry);
+      const item   = itemId ? this._actor.items.get(itemId) : null;
+      return {
+        index:    i,
+        itemId:   item?.id ?? entry?.itemId ?? '',
+        itemUuid: item?.uuid ?? entry?.itemUuid ?? '',
+        itemName: item?.name ?? entry?.label ?? '',
+        itemImg:  item?.img ?? '',
+        label:    entry?.label ?? '',
+        isLegacy: !!entry?.label && !item,
+        hasItem:  !!item
+      };
+    });
 
     return {
       item:     this._item,
       capacity,
-      contents,
-      used:     raw.filter(c => c?.label?.trim()).length,
+      slots,
+      used:     entries.length,
+      overCapacity: entries.length > capacity,
       moduleId: MODULE_ID
     };
   }
@@ -60,36 +71,218 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
   // ─── Listeners ────────────────────────────────────────────────────────────
 
   _onRender(context, options) {
-    this.element.querySelectorAll('.container-slot-input').forEach(el => {
-      el.addEventListener('change', e => this._onSlotChange(e));
+    this.element.querySelectorAll('.vellum-container-slot').forEach(el => {
+      el.addEventListener('dragover', e => this._onSlotDragOver(e));
+      el.addEventListener('drop', e => this._onSlotDrop(e));
+    });
+
+    this.element.querySelectorAll('.vellum-container-item').forEach(el => {
+      el.addEventListener('dragstart', e => this._onItemDragStart(e));
     });
 
     this.element.querySelector('.container-add-slot')
       ?.addEventListener('click', () => this._onAddSlot());
+
+    this.element.querySelectorAll('.vellum-container-remove').forEach(el => {
+      el.addEventListener('click', e => this._onRemoveItem(e));
+    });
+
+    this.element.querySelectorAll('.vellum-container-item-name').forEach(el => {
+      el.addEventListener('click', e => this._onItemClick(e));
+    });
   }
 
-  async _onSlotChange(event) {
-    const idx      = parseInt(event.currentTarget.dataset.index);
-    const value    = event.currentTarget.value.trim();
-    const capacity = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
-    const raw      = [...(this._item.getFlag(MODULE_ID, 'contents') ?? [])];
+  static _normalizeEntry(entry) {
+    if (entry == null) return null;
+    if (typeof entry === 'string') {
+      const label = entry.trim();
+      return label ? { label } : null;
+    }
+    if (typeof entry !== 'object') return null;
 
-    // Ensure array is big enough
-    while (raw.length <= idx) raw.push({ label: '' });
-    raw[idx].label = value;
+    const itemId   = String(entry.itemId ?? entry.id ?? '').trim();
+    const itemUuid = String(entry.itemUuid ?? entry.uuid ?? '').trim();
+    const label    = String(entry.label ?? '').trim();
+    if (!itemId && !itemUuid && !label) return null;
 
-    await this._item.setFlag(MODULE_ID, 'contents', raw);
-    await this._item.setFlag(
-      MODULE_ID, 'used',
-      raw.filter(c => c?.label?.trim()).length
+    const normalized = {};
+    if (itemId) normalized.itemId = itemId;
+    if (itemUuid) normalized.itemUuid = itemUuid;
+    if (label) normalized.label = label;
+    return normalized;
+  }
+
+  _getContentEntries() {
+    const raw = Array.isArray(this._item.getFlag(MODULE_ID, 'contents'))
+      ? this._item.getFlag(MODULE_ID, 'contents')
+      : [];
+
+    const entries = raw.map(ContainerWindow._normalizeEntry).filter(Boolean);
+    const seen = new Set(
+      entries.map(entry => entry.itemId).filter(Boolean)
     );
+
+    for (const item of this._actor.items.contents) {
+      if (item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) !== this._item.id) continue;
+      if (seen.has(item.id)) continue;
+      entries.push({
+        itemId: item.id,
+        itemUuid: item.uuid
+      });
+      seen.add(item.id);
+    }
+
+    return entries;
+  }
+
+  async _saveContents(entries) {
+    await this._item.setFlag(MODULE_ID, 'contents', entries);
     this.render();
+  }
+
+  static _entryItemId(entry) {
+    const itemUuid = String(entry?.itemUuid ?? entry?.uuid ?? '').trim();
+    if (itemUuid) {
+      const parts = itemUuid.split('.');
+      return String(entry?.itemId ?? entry?.id ?? parts[parts.length - 1] ?? '').trim();
+    }
+    return String(entry?.itemId ?? entry?.id ?? '').trim();
+  }
+
+  async _removeContainedItem(itemId) {
+    const entries = this._getContentEntries().filter(entry => ContainerWindow._entryItemId(entry) !== String(itemId));
+    await this._saveContents(entries);
+  }
+
+  static async _extractDroppedItem(event) {
+    const dataText = event.dataTransfer?.getData('text/plain')
+      || event.dataTransfer?.getData('application/json')
+      || '';
+    if (!dataText) return null;
+
+    let data = null;
+    try {
+      data = JSON.parse(dataText);
+    } catch {
+      return null;
+    }
+
+    const uuid = data?.uuid ?? data?.data?.uuid ?? data?.documentUuid ?? null;
+    if (uuid) return fromUuid(uuid);
+
+    return null;
+  }
+
+  async _onItemDragStart(event) {
+    const row = event.currentTarget.closest('[data-item-id]');
+    const itemId = row?.dataset.itemId;
+    if (!itemId) return;
+
+    const item = this._actor.items.get(itemId);
+    if (!item) return;
+
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify({
+      type: 'Item',
+      uuid: item.uuid,
+      id: item.id
+    }));
+  }
+
+  async _onSlotDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }
+
+  async _onSlotDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const slot = Number(event.currentTarget.dataset.index);
+    const item = await ContainerWindow._extractDroppedItem(event);
+    if (!item) return;
+
+    const resolved = await this._moveItemIntoContainer(item, slot);
+    if (!resolved) return;
+  }
+
+  async _moveItemIntoContainer(item, slotIndex = null) {
+    const capacity = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
+    const entries = this._getContentEntries();
+    const alreadyOwned = item.parent?.uuid === this._actor.uuid;
+    const currentId = String(item.id);
+    const currentContainerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) ?? null;
+    const existingIndex = entries.findIndex(entry => ContainerWindow._entryItemId(entry) === currentId);
+    const nextEntries = entries.filter(entry => ContainerWindow._entryItemId(entry) !== currentId);
+    const isNewToThisContainer = currentContainerId !== this._item.id && existingIndex === -1;
+
+    if (isNewToThisContainer && nextEntries.length >= capacity) {
+      ui.notifications.warn(`"${this._item.name}" is full (${nextEntries.length}/${capacity}).`);
+      return null;
+    }
+
+    let target = item;
+    if (!alreadyOwned) {
+      const data = target.toObject();
+      delete data._id;
+      const [created] = await Item.implementation.create([data], { parent: this._actor }) ?? [];
+      if (!created) return null;
+      target = created;
+      await target.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
+    }
+
+    if (currentContainerId && currentContainerId !== this._item.id) {
+      const previous = this._actor.items.get(currentContainerId);
+      if (previous) {
+        const previousEntries = (previous.getFlag(MODULE_ID, 'contents') ?? [])
+          .map(ContainerWindow._normalizeEntry)
+          .filter(Boolean)
+          .filter(entry => ContainerWindow._entryItemId(entry) !== currentId);
+        await previous.setFlag(MODULE_ID, 'contents', previousEntries);
+      }
+    }
+
+    const insertAt = slotIndex == null ? nextEntries.length : Math.max(0, Math.min(slotIndex, nextEntries.length));
+    nextEntries.splice(insertAt, 0, {
+      itemId: currentId,
+      itemUuid: target.uuid
+    });
+
+    await target.setFlag(MODULE_ID, CONTAINER_ID_FLAG, this._item.id);
+    await this._saveContents(nextEntries);
+    return target;
   }
 
   async _onAddSlot() {
     const current = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
     await this._item.setFlag(MODULE_ID, 'capacity', current + 1);
     this.render();
+  }
+
+  async _onRemoveItem(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const row = event.currentTarget.closest('[data-item-id]');
+    const itemId = row?.dataset.itemId;
+    if (!itemId) return;
+
+    const item = this._actor.items.get(itemId);
+    if (!item) {
+      await this._removeContainedItem(itemId);
+      return;
+    }
+
+    await item.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
+    await this._removeContainedItem(itemId);
+  }
+
+  async _onItemClick(event) {
+    event.preventDefault();
+    const row = event.currentTarget.closest('[data-item-id]');
+    const itemId = row?.dataset.itemId;
+    if (!itemId) return;
+    const item = this._actor.items.get(itemId);
+    item?.sheet.render(true);
   }
 
   // ─── Close ────────────────────────────────────────────────────────────────

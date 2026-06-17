@@ -4,7 +4,7 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES } from './VellumDataModel.js';
+import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES, CONTAINER_ID_FLAG } from './VellumDataModel.js';
 import { VellumSheetEvents } from './VellumSheetEvents.js';
 import { toggleTokenGlow, refreshActorTokens } from './VellumTokenGlow.js';
 
@@ -16,7 +16,9 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static DEFAULT_OPTIONS = {
     classes:  ['rnk-vellum', 'sheet', 'actor'],
     position: { width: 740, height: 900 },
-    dragDrop: [],
+    dragDrop: [
+      { dropSelector: null }
+    ],
     window:   {
       resizable: true,
       controls: [
@@ -45,6 +47,30 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
   get title() {
     return this.actor.name ?? 'Character';
+  }
+
+  static TRAIT_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);
+
+  _inventoryUsed() {
+    return this._prepareInventory().filter(i => !i.isWeightless).length;
+  }
+
+  async _removeItemFromContainer(item) {
+    const containerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG);
+    if (!containerId) return;
+
+    const container = this.actor.items.get(containerId);
+    if (container) {
+      const contents = (container.getFlag(MODULE_ID, 'contents') ?? []).filter(entry => {
+        if (typeof entry === 'string') return true;
+        if (!entry || typeof entry !== 'object') return true;
+        const entryId = String(entry.itemId ?? entry.id ?? entry.itemUuid ?? entry.uuid ?? '');
+        return entryId !== String(item.id) && entryId !== String(item.uuid);
+      });
+      await container.setFlag(MODULE_ID, 'contents', contents);
+    }
+
+    await item.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
   }
 
   // ─── Context ──────────────────────────────────────────────────────────────
@@ -113,17 +139,17 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
   _prepareInventory() {
-    const TRAIT_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);
     const slots = [];
     let autoSlot = 1000; // high number so auto-slotted items sort after manually slotted ones
     for (const it of this.actor.items.contents) {
       const flagCategory = it.getFlag(MODULE_ID, 'category') ?? 'gear';
+      const containerId  = it.getFlag(MODULE_ID, CONTAINER_ID_FLAG);
       const inferredCategory = flagCategory === 'gear'
         ? ((it.type ?? '').toLowerCase() === 'spell' ? 'spell' : flagCategory)
         : flagCategory;
       const category = inferredCategory;
       // Items in trait/talent/knowledge/charm categories are shown elsewhere, not in inventory
-      if (TRAIT_CATEGORIES.has(category)) continue;
+      if (containerId || VellumActorSheet.TRAIT_CATEGORIES.has(category)) continue;
       const slot = it.getFlag(MODULE_ID, 'slot') ?? autoSlot++;
       const type     = it.getFlag(MODULE_ID, 'type')     ?? 'standard';
       const damage   = it.getFlag(MODULE_ID, 'damage')   ?? '';
@@ -235,10 +261,37 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const charmSlot  = event.target?.closest?.('.vellum-charm-slot');
     const dropCategory = charmSlot ? 'charm' : (traitList?.dataset?.category ?? null);
     const RECLASSIFY_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);
+    const currentCategory = item.getFlag(MODULE_ID, 'category') ?? 'gear';
+    const currentContainerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) ?? null;
+    const typeSlug = String(item.type ?? '').toLowerCase();
+    const isSpellLike = currentCategory === 'spell' || item.system?.isSpell || typeSlug === 'spell';
+    const isAbilityLike = currentCategory === 'ability' || item.system?.isAbility || typeSlug === 'ability';
+    const isWeightlessItem = WEIGHTLESS_CATEGORIES.has(currentCategory) || isSpellLike || isAbilityLike;
+    const isOnThisActor = this.actor.uuid === item.parent?.uuid;
+    const currentCountsTowardInventory =
+      isOnThisActor &&
+      !currentContainerId &&
+      !isWeightlessItem &&
+      !VellumActorSheet.TRAIT_CATEGORIES.has(currentCategory);
+    const nextCategory = dropCategory ?? currentCategory;
+    const nextCountsTowardInventory =
+      !isWeightlessItem &&
+      !VellumActorSheet.TRAIT_CATEGORIES.has(nextCategory);
+    const inventoryMax = Math.max(10, getVellumData(this.actor).str?.score ?? 10);
+    const inventoryUsed = this._inventoryUsed();
+    const nextInventoryUsed = inventoryUsed
+      - (currentCountsTowardInventory ? 1 : 0)
+      + (nextCountsTowardInventory ? 1 : 0);
+
+    if (nextCountsTowardInventory && nextInventoryUsed > inventoryMax) {
+      ui.notifications.warn(`Inventory is full (${inventoryUsed}/${inventoryMax}).`);
+      return null;
+    }
 
     if (this.actor.uuid === item.parent?.uuid) {
       // Item already on this actor — reclassify if dropped onto a recognised section
       if (dropCategory && RECLASSIFY_CATEGORIES.has(dropCategory)) {
+        if (currentContainerId) await this._removeItemFromContainer(item);
         // Charm slot: move any existing charm item back to gear first
         if (dropCategory === 'charm') {
           const existing = this.actor.items.contents.find(
@@ -249,6 +302,12 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         const existing = this.actor.items.get(item.id);
         if (existing) return existing.setFlag(MODULE_ID, 'category', dropCategory);
       }
+
+      if (currentContainerId && !dropCategory) {
+        await this._removeItemFromContainer(item);
+        return item;
+      }
+
       return null;
     }
 
@@ -269,6 +328,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (created && dropCategory && RECLASSIFY_CATEGORIES.has(dropCategory)) {
       await created.setFlag(MODULE_ID, 'category', dropCategory);
     }
+    if (created && currentContainerId) await created.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
     return created ?? null;
   }
 

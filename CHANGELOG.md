@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.5] - 2026-06-17
+
+### Fixed
+- Weapon and spell roll buttons now use Shadowdark's native actor roll methods directly, matching the system's own attack and cast flow.
+- Inventory capacity now blocks drops that would exceed the STR-based slot limit instead of allowing over-capacity stacks.
+- Container items now support drag and drop into and out of the container sheet, with container membership staying in sync.
+
 ## [1.2.4] - 2026-06-06
 
 ### Fixed

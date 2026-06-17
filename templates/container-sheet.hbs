@@ -5,16 +5,29 @@
   <div class="vellum-container-info">
     <strong>{{item.name}}</strong>
     &nbsp;·&nbsp; {{used}} / {{capacity}} slots used
+    {{#if overCapacity}}
+    <span class="vellum-container-overflow">over capacity</span>
+    {{/if}}
   </div>
 
   <div class="vellum-container-list">
-    {{#each contents}}
-    <div class="vellum-container-slot">
+    {{#each slots}}
+    <div class="vellum-container-slot{{#if hasItem}} vellum-container-slot--filled{{else}} vellum-container-slot--empty{{/if}}"
+         data-index="{{index}}">
       <span class="vellum-container-slot-num">{{add index 1}}.</span>
-      <input class="container-slot-input" type="text"
-             data-index="{{index}}"
-             value="{{label}}"
-             placeholder="Empty" />
+      {{#if hasItem}}
+      <div class="vellum-container-item" data-item-id="{{itemId}}" draggable="true">
+        {{#if itemImg}}<img class="vellum-container-item-img" src="{{itemImg}}" alt="" />{{/if}}
+        <span class="vellum-container-item-name">{{itemName}}</span>
+        <button type="button" class="vellum-btn--ghost-sm vellum-container-remove" title="Remove from container">×</button>
+      </div>
+      {{else}}
+        {{#if label}}
+        <div class="vellum-container-legacy">{{label}}</div>
+        {{else}}
+        <div class="vellum-container-empty">Drop item here</div>
+        {{/if}}
+      {{/if}}
     </div>
     {{/each}}
   </div>

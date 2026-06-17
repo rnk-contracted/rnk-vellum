@@ -12,6 +12,9 @@ export const WEIGHTLESS_CATEGORIES = new Set(['spell', 'ability']);
 /** Categories that show a roll button in the inventory row. */
 export const ROLLABLE_CATEGORIES = new Set(['weapon', 'spell', 'ability']);
 
+/** Item flag used when an item is stored inside a container. */
+export const CONTAINER_ID_FLAG = 'containerId';
+
 export const VELLUM_DEFAULTS = {
   className:          '',
   level:              1,

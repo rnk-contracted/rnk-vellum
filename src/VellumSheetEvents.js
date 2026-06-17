@@ -273,13 +273,23 @@ export class VellumSheetEvents {
 
     const category  = item.getFlag(MODULE_ID, 'category') ?? 'gear';
     const isSpell   = WEIGHTLESS_CATEGORIES.has(category);
+    const rollConfig = { skipPrompt: event.shiftKey };
+    const typeSlug = String(item.type ?? '').toLowerCase();
+    const isNativeWeapon = (category === 'weapon' || typeSlug === 'weapon' || item.system?.isWeapon) && item.system?.isWeapon;
+    const isNativeSpell  = (category === 'spell' || typeSlug === 'spell' || item.system?.isSpell) && item.system?.isSpell;
 
-    // Weapons should use the system's own attack flow so Shadowdark can show
-    // its advantage/normal/disadvantage prompt and native damage handling.
-    if (category === 'weapon') {
-      if (typeof item.roll === 'function') return item.roll();
-      if (typeof item.rollAttack === 'function') return item.rollAttack();
-      if (typeof item.use === 'function') return item.use();
+    // Shadowdark native weapon flow.
+    if (isNativeWeapon) {
+      if (typeof actor.system?.rollAttack === 'function') {
+        return actor.system.rollAttack(item.uuid, rollConfig);
+      }
+    }
+
+    // Shadowdark native spell flow.
+    if (isNativeSpell) {
+      if (typeof actor.system?.castSpell === 'function') {
+        return actor.system.castSpell(item.uuid, rollConfig);
+      }
     }
 
     // Other physical items can still use system-native methods when present.

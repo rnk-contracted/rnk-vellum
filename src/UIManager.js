@@ -1,3 +1,5 @@
+import { CONTAINER_ID_FLAG, MODULE_ID } from './VellumDataModel.js';
+
 /**
  * RNK™ Vellum — UIManager.js
  * Singleton window registry. Prevents duplicate sub-windows and routes
@@ -53,6 +55,30 @@ export class UIManager {
    */
   static deregister(key) {
     _registry.delete(key);
+  }
+
+  /**
+   * Re-render an open container window for a given item id.
+   * @param {string} itemId
+   */
+  static refreshContainer(itemId) {
+    const win = _registry.get(`container:${itemId}`);
+    if (win?.rendered) win.render();
+  }
+
+  /**
+   * Refresh container windows affected by an item update.
+   * @param {Item} item
+   * @param {string|null} previousContainerId
+   */
+  static refreshForItem(item, previousContainerId = null) {
+    this.refreshContainer(item.id);
+
+    const currentContainerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) ?? null;
+    if (currentContainerId) this.refreshContainer(currentContainerId);
+    if (previousContainerId && previousContainerId !== currentContainerId) {
+      this.refreshContainer(previousContainerId);
+    }
   }
 
   /**
