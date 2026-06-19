@@ -350,10 +350,19 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (!el) return;
     // Per-actor overrides from GM Hub take priority over global client settings
     const flags = this.actor.getFlag(MODULE_ID, 'actorSettings') ?? {};
+    const glowEnabled = this.actor.getFlag(MODULE_ID, 'tokenGlow') ?? false;
     if (flags.glowColor)     el.style.setProperty('--vellum-glow-color',  flags.glowColor);
     if (flags.glowBlur   != null) el.style.setProperty('--vellum-glow-blur',   `${flags.glowBlur}px`);
     if (flags.glowSpread != null) el.style.setProperty('--vellum-glow-spread', `${flags.glowSpread}px`);
     if (flags.blessingColor) el.style.setProperty('--vellum-blessing-on', flags.blessingColor);
+    const portraitGlow = glowEnabled
+      ? 'drop-shadow(0 0 var(--vellum-glow-blur) var(--vellum-glow-color)) drop-shadow(0 0 var(--vellum-glow-spread) var(--vellum-glow-color))'
+      : 'none';
+    const portraitGlowHover = glowEnabled
+      ? 'drop-shadow(0 0 calc(var(--vellum-glow-blur) * 1.6) var(--vellum-glow-color)) drop-shadow(0 0 calc(var(--vellum-glow-spread) * 1.6) var(--vellum-glow-color))'
+      : 'none';
+    el.style.setProperty('--vellum-portrait-glow', portraitGlow);
+    el.style.setProperty('--vellum-portrait-glow-hover', portraitGlowHover);
   }
 
 }

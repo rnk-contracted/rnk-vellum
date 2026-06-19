@@ -131,9 +131,23 @@ export class VellumGMHub extends HandlebarsApplicationMixin(ApplicationV2) {
       // Token glow toggle
       card.querySelector('.vhub-token-glow-btn')?.addEventListener('click', async () => {
         const current = actor.getFlag(MODULE_ID, 'tokenGlow') ?? false;
-        await actor.setFlag(MODULE_ID, 'tokenGlow', !current);
+        const next = !current;
+        await actor.setFlag(MODULE_ID, 'tokenGlow', next);
         const { refreshActorTokens } = await import('./VellumTokenGlow.js');
         refreshActorTokens(actor);
+        document.querySelectorAll(`.rnk-vellum[data-actor-id="${actorId}"], .rnk-vellum`).forEach(sheetEl => {
+          const sheetActor = sheetEl._app?.actor ?? sheetEl.closest('[data-actor-id]')?.dataset?.actorId;
+          if (!sheetActor || sheetActor === actorId) {
+            const glowValue = next
+              ? 'drop-shadow(0 0 var(--vellum-glow-blur) var(--vellum-glow-color)) drop-shadow(0 0 var(--vellum-glow-spread) var(--vellum-glow-color))'
+              : 'none';
+            const glowHoverValue = next
+              ? 'drop-shadow(0 0 calc(var(--vellum-glow-blur) * 1.6) var(--vellum-glow-color)) drop-shadow(0 0 calc(var(--vellum-glow-spread) * 1.6) var(--vellum-glow-color))'
+              : 'none';
+            sheetEl.style.setProperty('--vellum-portrait-glow', glowValue);
+            sheetEl.style.setProperty('--vellum-portrait-glow-hover', glowHoverValue);
+          }
+        });
         this.render();
       });
 

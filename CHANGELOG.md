@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.6] - 2026-06-19
+
+### Changed
+- Token glow now also applies to the character sheet portrait and deity portrait when enabled for an actor.
+- The attributes block has been moved into the left panel above the background section to balance the sheet layout.
+- Description and Subtitle were removed from the header, HP moved under Level, and XP now displays as `0/10` beside the level field.
+- Editable fields now use a lighter fill so inputs stand out more clearly against the parchment background.
+
 ## [1.2.5] - 2026-06-17
 
 ### Fixed

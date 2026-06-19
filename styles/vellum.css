@@ -79,6 +79,10 @@
   justify-content: center;
 }
 
+.vellum-section-header--compact {
+  justify-content: flex-start;
+}
+
 /* ── Common Controls ─────────────────────────────────────────────────────── */
 .vellum-label {
   font-size: 0.75rem;
@@ -92,7 +96,7 @@
 .vellum-label--gap { margin-left: 10px; }
 
 .vellum-input {
-  background: var(--vellum-input-bg);
+  background: rgba(255,255,255,0.28);
   border: none;
   border-bottom: 1px solid var(--vellum-grid-line);
   border-radius: 0;
@@ -107,7 +111,7 @@
 .vellum-input:focus {
   outline: none;
   border-bottom-color: var(--vellum-accent);
-  background: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.42);
 }
 
 .vellum-input--sm { width: 52px; }
@@ -124,7 +128,7 @@
 }
 
 .vellum-textarea {
-  background: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.3);
   border: 1px solid var(--vellum-grid-line);
   border-radius: var(--vellum-radius);
   color: var(--vellum-ink);
@@ -217,16 +221,12 @@
     82% 100%, 18% 100%,
     0% 78%, 0% 12%
   );
-  filter:
-    drop-shadow(0 0 var(--vellum-glow-blur) var(--vellum-glow-color))
-    drop-shadow(0 0 var(--vellum-glow-spread) var(--vellum-glow-color));
+  filter: var(--vellum-portrait-glow, none);
   transition: filter 0.2s;
 }
 
 .vellum-portrait:hover {
-  filter:
-    drop-shadow(0 0 calc(var(--vellum-glow-blur) * 1.6) var(--vellum-glow-color))
-    drop-shadow(0 0 calc(var(--vellum-glow-spread) * 1.6) var(--vellum-glow-color));
+  filter: var(--vellum-portrait-glow-hover, var(--vellum-portrait-glow, none));
 }
 
 .vellum-portrait-hp {
@@ -284,16 +284,12 @@
   display: block;
   /* Circular cutout for deity */
   clip-path: circle(46% at 50% 50%);
-  filter:
-    drop-shadow(0 0 var(--vellum-glow-blur) var(--vellum-glow-color))
-    drop-shadow(0 0 var(--vellum-glow-spread) var(--vellum-glow-color));
+  filter: var(--vellum-portrait-glow, none);
   transition: filter 0.2s;
 }
 
 .vellum-deity-portrait:hover {
-  filter:
-    drop-shadow(0 0 calc(var(--vellum-glow-blur) * 1.6) var(--vellum-glow-color))
-    drop-shadow(0 0 calc(var(--vellum-glow-spread) * 1.6) var(--vellum-glow-color));
+  filter: var(--vellum-portrait-glow-hover, var(--vellum-portrait-glow, none));
 }
 
 .vellum-blessings-label {
@@ -342,6 +338,10 @@
   padding: 6px;
 }
 
+.vellum-middle-spacer {
+  min-height: 1px;
+}
+
 /* ── Shield / AC ─────────────────────────────────────────────────────────── */
 .vellum-ac-cell {
   display: flex;
@@ -379,8 +379,10 @@
   transform: translate(-50%, -50%);
   width: 52px;
   text-align: center;
-  background: transparent;
+  background: rgba(255,255,255,0.28);
   border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 2px;
   font-family: var(--vellum-font-body);
   font-size: 1.1rem;
   font-weight: bold;
@@ -389,12 +391,23 @@
   z-index: 1;
 }
 
-.vellum-ac-input:focus { outline: none; }
+.vellum-ac-input:focus {
+  outline: none;
+  background: rgba(255,255,255,0.42);
+}
 
 /* ── Stats Grid ──────────────────────────────────────────────────────────── */
 .vellum-stats-cell {
   border: 1px solid var(--vellum-grid-line);
   padding: 4px;
+}
+
+.vellum-attributes-cell {
+  border: 1px solid var(--vellum-grid-line);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .vellum-stats-grid {
@@ -444,7 +457,7 @@
 .vellum-stat-mod {
   width: 34px;
   text-align: center;
-  background: transparent;
+  background: rgba(255,255,255,0.24);
   border: none;
   border-bottom: 1px solid var(--vellum-grid-line);
   color: var(--vellum-ink);
@@ -464,7 +477,7 @@
 .vellum-stat-score:focus,
 .vellum-stat-mod:focus {
   outline: none;
-  background: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.42);
 }
 
 /* ── Abilities Table ─────────────────────────────────────────────────────── */
@@ -710,6 +723,25 @@
 .vellum-trait-delete:hover { color: var(--vellum-accent); }
 
 .vellum-background-cell .vellum-textarea { flex: 1; min-height: 40px; }
+
+.vellum-xp-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+}
+
+.vellum-xp-max {
+  font-size: 0.72rem;
+}
+
+.vellum-row--level {
+  flex-wrap: wrap;
+}
+
+.vellum-row--hp {
+  margin-top: 2px;
+}
 
 .vellum-gp-row {
   display: flex;

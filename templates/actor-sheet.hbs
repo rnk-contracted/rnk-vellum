@@ -2,16 +2,12 @@
 {{!-- © 2026 RNK Enterprise. All rights reserved. See LICENSE. --}}
 <form class="vellum-sheet" autocomplete="off">
 
-  {{!-- ══════════════════════════════════════════════════════════════════════ --}}
-  {{!-- HEADER ROW                                                             --}}
-  {{!-- ══════════════════════════════════════════════════════════════════════ --}}
   <div class="vellum-header">
 
     {{!-- Portrait + HP beneath --}}
     <div class="vellum-portrait-cell">
       <img class="vellum-portrait" src="{{actor.img}}"
            title="Click to change portrait" alt="Portrait" />
-      {{!-- HP lives directly under the portrait --}}
       <div class="vellum-portrait-hp">
         <span class="vellum-label vellum-label--hp">HP</span>
         <span class="vellum-hp-parens">(</span>
@@ -36,25 +32,24 @@
         <input class="vellum-input" type="text"
                data-vellum-field="className" value="{{vellum.className}}" />
       </div>
-      <div class="vellum-row">
+      <div class="vellum-row vellum-row--level">
         <span class="vellum-label">Level:</span>
         <input class="vellum-input vellum-input--sm" type="number"
                data-vellum-field="level" value="{{vellum.level}}" min="0" />
+        <span class="vellum-xp-group">
+          <span class="vellum-label">XP:</span>
+          <input class="vellum-input vellum-input--sm" type="number"
+                 data-vellum-field="xp" value="{{vellum.xp}}" min="0" />
+          <span class="vellum-label vellum-xp-max">/10</span>
+        </span>
+      </div>
+      <div class="vellum-row vellum-row--hp">
+        <span class="vellum-label">HP:</span>
+        <input class="vellum-input vellum-input--sm" type="number"
+               data-vellum-field="hp.value" value="{{vellum.hp.value}}" />
         <span class="vellum-sep">/</span>
         <input class="vellum-input vellum-input--sm" type="number"
-               data-vellum-field="xp" value="{{vellum.xp}}" min="0" />
-        <span class="vellum-label">XP</span>
-      </div>
-      <div class="vellum-row">
-        <span class="vellum-label">Description:</span>
-        <input class="vellum-input" type="text"
-               data-vellum-field="description" value="{{vellum.description}}" />
-      </div>
-      {{!-- Second description line / subtitle --}}
-      <div class="vellum-row">
-        <span class="vellum-label">Subtitle:</span>
-        <input class="vellum-input" type="text"
-               data-vellum-field="subtitle" value="{{vellum.subtitle}}" />
+               data-vellum-field="hp.max" value="{{vellum.hp.max}}" />
       </div>
     </div>
 
@@ -70,31 +65,26 @@
         <button type="button"
                 class="vellum-blessing{{#if vellum.blessings.b1}} vellum-blessing--active{{/if}}"
                 data-key="b1"
-                title="Blessing token — click to spend or restore"></button>
+                title="Blessing token - click to spend or restore"></button>
         {{/if}}
         {{#if showB2}}
         <button type="button"
                 class="vellum-blessing{{#if vellum.blessings.b2}} vellum-blessing--active{{/if}}"
                 data-key="b2"
-                title="Blessing token — click to spend or restore"></button>
+                title="Blessing token - click to spend or restore"></button>
         {{/if}}
         {{#if showB3}}
         <button type="button"
                 class="vellum-blessing{{#if vellum.blessings.b3}} vellum-blessing--active{{/if}}"
                 data-key="b3"
-                title="Blessing token — click to spend or restore"></button>
+                title="Blessing token - click to spend or restore"></button>
         {{/if}}
       </div>
     </div>
 
   </div>
 
-  {{!-- ══════════════════════════════════════════════════════════════════════ --}}
-  {{!-- MIDDLE ROW: AC Shield + Stats (Abilities table removed)               --}}
-  {{!-- ══════════════════════════════════════════════════════════════════════ --}}
   <div class="vellum-middle">
-
-    {{!-- AC Shield --}}
     <div class="vellum-ac-cell">
       <div class="vellum-shield-wrap">
         <svg class="vellum-shield-svg" viewBox="0 0 60 72" xmlns="http://www.w3.org/2000/svg">
@@ -103,56 +93,46 @@
         </svg>
         <input class="vellum-ac-input" type="text"
                data-vellum-field="ac" value="{{vellum.ac}}"
-               title="Armor Class — e.g. 10, 10+1, 10/12" />
+               title="Armor Class - e.g. 10, 10+1, 10/12" />
       </div>
     </div>
-
-    {{!-- Stats Grid --}}
-    <div class="vellum-stats-cell">
-      <div class="vellum-stats-grid">
-        {{!-- Left column: STR / DEX / CON --}}
-        <div class="vellum-stats-col">
-          {{#each statsLeft}}
-          <div class="vellum-stat-row">
-            <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
-            <input class="vellum-stat-score" type="number"
-                   data-vellum-field="{{scoreField}}" value="{{score}}" />
-            <span class="vellum-sep">/</span>
-            <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
-          </div>
-          {{/each}}
-        </div>
-        {{!-- Right column: INT / WIS / CHA --}}
-        <div class="vellum-stats-col">
-          {{#each statsRight}}
-          <div class="vellum-stat-row">
-            <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
-            <input class="vellum-stat-score" type="number"
-                   data-vellum-field="{{scoreField}}" value="{{score}}" />
-            <span class="vellum-sep">/</span>
-            <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
-          </div>
-          {{/each}}
-        </div>
-      </div>
-    </div>
-
-    {{!-- Stats block fills the remaining width now that Abilities are removed --}}
-    </div>
-
+    <div class="vellum-middle-spacer" aria-hidden="true"></div>
   </div>
 
-  {{!-- ══════════════════════════════════════════════════════════════════════ --}}
-  {{!-- LOWER ROW: Background Panel + Inventory                                --}}
-  {{!-- ══════════════════════════════════════════════════════════════════════ --}}
   <div class="vellum-lower">
 
     {{!-- Background Panel --}}
     <div class="vellum-background-cell">
 
-      {{!-- Reorderable section container --}}
-      <div class="vellum-bg-sections" id="vellum-bg-sections">
+      <div class="vellum-attributes-cell">
+        <div class="vellum-section-header vellum-section-header--compact">Attributes</div>
+        <div class="vellum-stats-grid">
+          <div class="vellum-stats-col">
+            {{#each statsLeft}}
+            <div class="vellum-stat-row">
+              <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
+              <input class="vellum-stat-score" type="number"
+                     data-vellum-field="{{scoreField}}" value="{{score}}" />
+              <span class="vellum-sep">/</span>
+              <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+            </div>
+            {{/each}}
+          </div>
+          <div class="vellum-stats-col">
+            {{#each statsRight}}
+            <div class="vellum-stat-row">
+              <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
+              <input class="vellum-stat-score" type="number"
+                     data-vellum-field="{{scoreField}}" value="{{score}}" />
+              <span class="vellum-sep">/</span>
+              <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+      </div>
 
+      <div class="vellum-bg-sections" id="vellum-bg-sections">
         {{#each bgSections}}
         <div class="vellum-bg-section" data-section="{{key}}" draggable="true">
           <div class="vellum-bg-label-row">
@@ -174,8 +154,7 @@
           </div>
         </div>
         {{/each}}
-
-      </div>{{!-- #vellum-bg-sections --}}
+      </div>
 
       <div class="vellum-bg-block vellum-bg-block--inline">
         <span class="vellum-bg-label">Phobia</span>
@@ -192,7 +171,6 @@
                data-vellum-field="gp.max" value="{{vellum.gp.max}}" />
       </div>
 
-      {{!-- Charm slot — single amulet/gear slot --}}
       <div class="vellum-charm-slot">
         <span class="vellum-charm-label">Charm</span>
         {{#if charmItem}}
@@ -218,7 +196,7 @@
         <span class="vellum-inv-counter">{{inventoryUsed}}/{{inventoryMax}}</span>
         {{#if isOwner}}
         <div class="vellum-inv-add-wrap">
-          <button type="button" class="vellum-btn--ghost vellum-inv-add" title="Add item">+ Add &#9663;</button>
+          <button type="button" class="vellum-btn--ghost vellum-inv-add" title="Add item">+ Add ▾</button>
           <div class="vellum-inv-add-menu" hidden>
             <button type="button" class="vellum-inv-add-option" data-inv-type="standard">Item</button>
             <button type="button" class="vellum-inv-add-option" data-inv-type="container">Container</button>
@@ -232,14 +210,12 @@
         {{#each inventoryGroups}}
         <div class="vellum-inv-group {{#if isWeightless}}vellum-inv-group--weightless{{/if}}" data-category="{{category}}" draggable="true">
 
-          {{!-- Group header with drag handle --}}
           <div class="vellum-inv-group-header">
             <span class="vellum-inv-group-drag" title="Drag to reorder">⠿</span>
             <span class="vellum-inv-group-label">{{label}}</span>
             <span class="vellum-inv-group-count">{{items.length}}</span>
           </div>
 
-          {{!-- Items in this group --}}
           {{#each items}}
           <div class="vellum-inv-row {{#if equipped}}vellum-inv-row--equipped{{/if}}"
                data-slot="{{slot}}"
