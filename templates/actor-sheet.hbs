@@ -35,21 +35,13 @@
       <div class="vellum-row vellum-row--level">
         <span class="vellum-label">Level:</span>
         <input class="vellum-input vellum-input--sm" type="number"
-               data-vellum-field="level" value="{{vellum.level}}" min="0" />
+               data-vellum-field="level" value="{{vellum.level}}" min="1" max="20" />
         <span class="vellum-xp-group">
           <span class="vellum-label">XP:</span>
           <input class="vellum-input vellum-input--sm" type="number"
                  data-vellum-field="xp" value="{{vellum.xp}}" min="0" />
-          <span class="vellum-label vellum-xp-max">/10</span>
+          <span class="vellum-label vellum-xp-max">/{{xpMax}}</span>
         </span>
-      </div>
-      <div class="vellum-row vellum-row--hp">
-        <span class="vellum-label">HP:</span>
-        <input class="vellum-input vellum-input--sm" type="number"
-               data-vellum-field="hp.value" value="{{vellum.hp.value}}" />
-        <span class="vellum-sep">/</span>
-        <input class="vellum-input vellum-input--sm" type="number"
-               data-vellum-field="hp.max" value="{{vellum.hp.max}}" />
       </div>
     </div>
 
@@ -84,50 +76,49 @@
 
   </div>
 
-  <div class="vellum-middle">
-    <div class="vellum-ac-cell">
-      <div class="vellum-shield-wrap">
-        <svg class="vellum-shield-svg" viewBox="0 0 60 72" xmlns="http://www.w3.org/2000/svg">
-          <path d="M30 4 L56 16 L56 38 Q56 58 30 68 Q4 58 4 38 L4 16 Z"
-                class="vellum-shield-path" />
-        </svg>
-        <input class="vellum-ac-input" type="text"
-               data-vellum-field="ac" value="{{vellum.ac}}"
-               title="Armor Class - e.g. 10, 10+1, 10/12" />
-      </div>
-    </div>
-    <div class="vellum-middle-spacer" aria-hidden="true"></div>
-  </div>
-
   <div class="vellum-lower">
 
     {{!-- Background Panel --}}
     <div class="vellum-background-cell">
 
-      <div class="vellum-attributes-cell">
-        <div class="vellum-section-header vellum-section-header--compact">Attributes</div>
-        <div class="vellum-stats-grid">
-          <div class="vellum-stats-col">
-            {{#each statsLeft}}
-            <div class="vellum-stat-row">
-              <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
-              <input class="vellum-stat-score" type="number"
-                     data-vellum-field="{{scoreField}}" value="{{score}}" />
-              <span class="vellum-sep">/</span>
-              <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
-            </div>
-            {{/each}}
+      <div class="vellum-background-top">
+        <div class="vellum-ac-cell vellum-ac-cell--inline">
+          <div class="vellum-shield-wrap">
+            <svg class="vellum-shield-svg" viewBox="0 0 60 72" xmlns="http://www.w3.org/2000/svg">
+              <path d="M30 4 L56 16 L56 38 Q56 58 30 68 Q4 58 4 38 L4 16 Z"
+                    class="vellum-shield-path" />
+            </svg>
+            <input class="vellum-ac-input" type="text"
+                   data-vellum-field="ac" value="{{vellum.ac}}"
+                   title="Armor Class - e.g. 10, 10+1, 10/12" />
           </div>
-          <div class="vellum-stats-col">
-            {{#each statsRight}}
-            <div class="vellum-stat-row">
-              <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
-              <input class="vellum-stat-score" type="number"
-                     data-vellum-field="{{scoreField}}" value="{{score}}" />
-              <span class="vellum-sep">/</span>
-              <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+        </div>
+
+        <div class="vellum-attributes-cell">
+          <div class="vellum-section-header vellum-section-header--compact">Attributes</div>
+          <div class="vellum-stats-grid">
+            <div class="vellum-stats-col">
+              {{#each statsLeft}}
+              <div class="vellum-stat-row">
+                <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
+                <input class="vellum-stat-score" type="number"
+                       data-vellum-field="{{scoreField}}" value="{{score}}" />
+                <span class="vellum-sep">/</span>
+                <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+              </div>
+              {{/each}}
             </div>
-            {{/each}}
+            <div class="vellum-stats-col">
+              {{#each statsRight}}
+              <div class="vellum-stat-row">
+                <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
+                <input class="vellum-stat-score" type="number"
+                       data-vellum-field="{{scoreField}}" value="{{score}}" />
+                <span class="vellum-sep">/</span>
+                <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+              </div>
+              {{/each}}
+            </div>
           </div>
         </div>
       </div>
@@ -220,7 +211,8 @@
           <div class="vellum-inv-row {{#if equipped}}vellum-inv-row--equipped{{/if}}"
                data-slot="{{slot}}"
                data-item-id="{{itemId}}"
-               data-is-weapon="{{isWeapon}}">
+               data-is-weapon="{{isWeapon}}"
+               draggable="true">
 
             <div class="vellum-inv-main">
               {{#if itemImg}}

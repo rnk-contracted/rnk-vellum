@@ -103,6 +103,8 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
     // Only physical (non-weightless) items consume inventory slots
     const inventoryUsed = inventory.filter(i => !i.isWeightless).length;
+    const xpLevel = Math.max(1, Math.min(vellum.level ?? 1, 20));
+    const xpMax   = xpLevel * 10;
 
     return {
       actor:           this.actor,
@@ -120,6 +122,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       showB2:          blessingCount >= 2,
       showB3:          blessingCount >= 3,
       tokenGlowEnabled: this.actor.getFlag(MODULE_ID, 'tokenGlow') ?? false,
+      xpMax,
       moduleId:      MODULE_ID,
       isOwner:       this.actor.isOwner,
       isGM:          game.user.isGM

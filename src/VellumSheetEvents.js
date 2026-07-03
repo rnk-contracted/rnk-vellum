@@ -21,7 +21,7 @@ export class VellumSheetEvents {
 
     // Inline field changes
     qa('[data-vellum-field]').forEach(node =>
-      node.addEventListener('change', e => VellumSheetEvents._onFieldChange(e, actor))
+      node.addEventListener('change', e => VellumSheetEvents._onFieldChange(e, actor, sheet))
     );
 
     // Actor name
@@ -76,6 +76,11 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onItemDelete(e, actor))
     );
 
+    // Inventory rows may be dragged into containers
+    qa('.vellum-inv-row').forEach(node =>
+      node.addEventListener('dragstart', e => VellumSheetEvents._onInventoryDragStart(e, actor))
+    );
+
     // Inventory group drag-to-reorder
     VellumSheetEvents._bindGroupDrag(el, actor);
 
@@ -121,12 +126,15 @@ export class VellumSheetEvents {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  static async _onFieldChange(event, actor) {
+  static async _onFieldChange(event, actor, sheet) {
     event.preventDefault();
     const el    = event.currentTarget;
     const field = el.dataset.vellumField;
     const value = el.type === 'number' ? Number(el.value) : el.value;
-    return setVellumData(actor, foundry.utils.expandObject({ [field]: value }));
+    await setVellumData(actor, foundry.utils.expandObject({ [field]: value }));
+    if (field === 'level') {
+      sheet?.render(true);
+    }
   }
 
   static async _onBlessingToggle(event, actor) {
@@ -330,6 +338,21 @@ export class VellumSheetEvents {
     const itemId = row?.dataset.itemId;
     if (!itemId) return;
     return actor.deleteEmbeddedDocuments('Item', [itemId]);
+  }
+
+  static async _onInventoryDragStart(event, actor) {
+    const row = event.currentTarget.closest('[data-item-id]');
+    const itemId = row?.dataset.itemId;
+    if (!itemId) return;
+    const item = actor.items.get(itemId);
+    if (!item) return;
+
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify({
+      type: 'Item',
+      uuid: item.uuid,
+      id: item.id
+    }));
   }
 
   static _bindGroupDrag(el, actor) {

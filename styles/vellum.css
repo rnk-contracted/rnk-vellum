@@ -342,11 +342,23 @@
   min-height: 1px;
 }
 
+.vellum-background-top {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px;
+  align-items: start;
+}
+
 /* ── Shield / AC ─────────────────────────────────────────────────────────── */
 .vellum-ac-cell {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.vellum-ac-cell--inline {
+  align-items: flex-start;
+  padding-top: 2px;
 }
 
 .vellum-shield-wrap {
