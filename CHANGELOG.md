@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.8] - 2026-07-17
+
+### Changed
+- HP now appears as a standard identity row directly beneath Level instead of under the character portrait.
+- Container contents now use the same compact item presentation as the player inventory.
+
+### Fixed
+- Items can be dragged from containers back into the player inventory.
+- Container slot counts are derived from actual contained items and no longer include stale or legacy entries.
+- Attribute checks delegate to the game system's native stat-roll flow, with a generic roll fallback for other systems.
+- All Vellum characters can use Shadowdark's native spell-casting flow even without a spellcasting class.
+
 ## [1.2.6] - 2026-06-19
 
 ### Changed

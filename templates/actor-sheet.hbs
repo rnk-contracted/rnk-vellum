@@ -4,20 +4,10 @@
 
   <div class="vellum-header">
 
-    {{!-- Portrait + HP beneath --}}
+    {{!-- Portrait --}}
     <div class="vellum-portrait-cell">
       <img class="vellum-portrait" src="{{actor.img}}"
            title="Click to change portrait" alt="Portrait" />
-      <div class="vellum-portrait-hp">
-        <span class="vellum-label vellum-label--hp">HP</span>
-        <span class="vellum-hp-parens">(</span>
-        <input class="vellum-input vellum-input--xs" type="number"
-               data-vellum-field="hp.value" value="{{vellum.hp.value}}" />
-        <span class="vellum-sep">/</span>
-        <input class="vellum-input vellum-input--xs" type="number"
-               data-vellum-field="hp.max" value="{{vellum.hp.max}}" />
-        <span class="vellum-hp-parens">)</span>
-      </div>
     </div>
 
     {{!-- Identity fields --}}
@@ -42,6 +32,14 @@
                  data-vellum-field="xp" value="{{vellum.xp}}" min="0" />
           <span class="vellum-label vellum-xp-max">/{{xpMax}}</span>
         </span>
+      </div>
+      <div class="vellum-row vellum-row--hp">
+        <span class="vellum-label">HP:</span>
+        <input class="vellum-input vellum-input--xs" type="number"
+               data-vellum-field="hp.value" value="{{vellum.hp.value}}" />
+        <span class="vellum-sep">/</span>
+        <input class="vellum-input vellum-input--xs" type="number"
+               data-vellum-field="hp.max" value="{{vellum.hp.max}}" />
       </div>
     </div>
 

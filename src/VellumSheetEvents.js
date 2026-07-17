@@ -296,7 +296,7 @@ export class VellumSheetEvents {
     // Shadowdark native spell flow.
     if (isNativeSpell) {
       if (typeof actor.system?.castSpell === 'function') {
-        return actor.system.castSpell(item.uuid, rollConfig);
+        return VellumSheetEvents._castSpellForAnyActor(actor, item, rollConfig);
       }
     }
 
@@ -329,6 +329,34 @@ export class VellumSheetEvents {
       speaker: ChatMessage.getSpeaker({ actor }),
       flavor:  `${actor.name} \u2014 ${item.name}`
     });
+  }
+
+  static async _castSpellForAnyActor(actor, item, rollConfig = {}) {
+    const model = actor.system;
+    const spellcasting = model?.spellcasting;
+    const classes = spellcasting?.classes;
+    const forceUniversalCasting = model?.isSpellCaster === false && Array.isArray(classes);
+
+    if (!forceUniversalCasting) {
+      return model.castSpell(item.uuid, rollConfig);
+    }
+
+    // Shadowdark normally rejects spell items when the actor has no casting
+    // class. Temporarily expose the system's existing "all items" path and a
+    // caster marker so its native dialog, roll hooks, spell loss, and chat card
+    // still run for every Vellum character.
+    const marker = `${MODULE_ID}-universal-caster`;
+    const previousAllowAllItems = spellcasting.allowAllItems;
+    classes.push(marker);
+    spellcasting.allowAllItems = true;
+
+    try {
+      return await model.castSpell(item.uuid, rollConfig);
+    } finally {
+      const markerIndex = classes.indexOf(marker);
+      if (markerIndex !== -1) classes.splice(markerIndex, 1);
+      spellcasting.allowAllItems = previousAllowAllItems;
+    }
   }
 
   static async _onItemDelete(event, actor) {
@@ -499,10 +527,18 @@ export class VellumSheetEvents {
   static async _onStatRoll(event, actor) {
     event.preventDefault();
     const btn  = event.currentTarget;
-    const stat = btn.dataset.stat.toUpperCase();
+    const statKey = btn.dataset.stat?.toLowerCase();
+    if (!statKey) return;
+
+    if (typeof actor.system?.rollStatCheck === 'function') {
+      return actor.system.rollStatCheck(statKey, { skipPrompt: event.shiftKey });
+    }
+
+    const stat = statKey.toUpperCase();
     const mod  = parseInt(btn.dataset.mod) || 0;
-    const roll = await new Roll(`1d20 + ${mod}`).evaluate();
-    roll.toMessage({
+    const formula = mod === 0 ? '1d20' : `1d20 + ${mod}`;
+    const roll = await new Roll(formula).evaluate();
+    return roll.toMessage({
       speaker: ChatMessage.getSpeaker({ actor }),
       flavor:  `${actor.name} — ${stat} Check`
     });

@@ -16,10 +16,16 @@
          data-index="{{index}}">
       <span class="vellum-container-slot-num">{{add index 1}}.</span>
       {{#if hasItem}}
-      <div class="vellum-container-item" data-item-id="{{itemId}}" draggable="true">
-        {{#if itemImg}}<img class="vellum-container-item-img" src="{{itemImg}}" alt="" />{{/if}}
-        <span class="vellum-container-item-name">{{itemName}}</span>
-        <button type="button" class="vellum-btn--ghost-sm vellum-container-remove" title="Remove from container">×</button>
+      <div class="vellum-container-item vellum-inv-row" data-item-id="{{itemId}}" draggable="true">
+        <div class="vellum-inv-main">
+          {{#if itemImg}}<img class="vellum-inv-img vellum-container-item-img" src="{{itemImg}}" alt="" />{{/if}}
+          <div class="vellum-inv-info">
+            <span class="vellum-item-name vellum-container-item-name">{{itemName}}</span>
+          </div>
+        </div>
+        <div class="vellum-inv-actions">
+          <button type="button" class="vellum-inv-btn vellum-container-remove" title="Move to player inventory">×</button>
+        </div>
       </div>
       {{else}}
         {{#if label}}

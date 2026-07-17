@@ -117,13 +117,25 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
       ? this._item.getFlag(MODULE_ID, 'contents')
       : [];
 
-    const entries = raw.map(ContainerWindow._normalizeEntry).filter(Boolean);
-    const seen = new Set(
-      entries.map(entry => entry.itemId).filter(Boolean)
-    );
+    // Container membership lives on the contained item. Reconcile the saved
+    // ordering against those flags so legacy labels, deleted-item references,
+    // and stale duplicate records never consume capacity.
+    const entries = [];
+    const seen = new Set();
+
+    for (const rawEntry of raw) {
+      const entry = ContainerWindow._normalizeEntry(rawEntry);
+      const itemId = ContainerWindow._entryItemId(entry);
+      const item = itemId ? this._actor.items.get(itemId) : null;
+      if (!item || item.id === this._item.id || seen.has(item.id)) continue;
+      if (item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) !== this._item.id) continue;
+      entries.push({ itemId: item.id, itemUuid: item.uuid });
+      seen.add(item.id);
+    }
 
     for (const item of this._actor.items.contents) {
       if (item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) !== this._item.id) continue;
+      if (item.id === this._item.id) continue;
       if (seen.has(item.id)) continue;
       entries.push({
         itemId: item.id,
@@ -136,7 +148,10 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _saveContents(entries) {
-    await this._item.setFlag(MODULE_ID, 'contents', entries);
+    await this._item.update({
+      [`flags.${MODULE_ID}.contents`]: entries,
+      [`flags.${MODULE_ID}.used`]: entries.length
+    });
     this.render();
   }
 
@@ -207,10 +222,15 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _moveItemIntoContainer(item, slotIndex = null) {
+    if (item.parent?.uuid === this._actor.uuid && item.id === this._item.id) {
+      ui.notifications.warn('A container cannot contain itself.');
+      return null;
+    }
+
     const capacity = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
     const entries = this._getContentEntries();
     const alreadyOwned = item.parent?.uuid === this._actor.uuid;
-    const currentId = String(item.id);
+    let currentId = String(item.id);
     const currentContainerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) ?? null;
     const existingIndex = entries.findIndex(entry => ContainerWindow._entryItemId(entry) === currentId);
     const nextEntries = entries.filter(entry => ContainerWindow._entryItemId(entry) !== currentId);
@@ -228,17 +248,25 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
       const [created] = await Item.implementation.create([data], { parent: this._actor }) ?? [];
       if (!created) return null;
       target = created;
+      currentId = String(target.id);
       await target.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
     }
 
-    if (currentContainerId && currentContainerId !== this._item.id) {
+    if (alreadyOwned && currentContainerId && currentContainerId !== this._item.id) {
       const previous = this._actor.items.get(currentContainerId);
       if (previous) {
         const previousEntries = (previous.getFlag(MODULE_ID, 'contents') ?? [])
           .map(ContainerWindow._normalizeEntry)
           .filter(Boolean)
           .filter(entry => ContainerWindow._entryItemId(entry) !== currentId);
-        await previous.setFlag(MODULE_ID, 'contents', previousEntries);
+        const previousUsed = this._actor.items.contents.filter(contained =>
+          contained.id !== target.id &&
+          contained.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === currentContainerId
+        ).length;
+        await previous.update({
+          [`flags.${MODULE_ID}.contents`]: previousEntries,
+          [`flags.${MODULE_ID}.used`]: previousUsed
+        });
       }
     }
 

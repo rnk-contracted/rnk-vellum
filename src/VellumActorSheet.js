@@ -55,6 +55,13 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     return this._prepareInventory().filter(i => !i.isWeightless).length;
   }
 
+  _containerUsed(container) {
+    return this.actor.items.contents.filter(item =>
+      item.id !== container.id &&
+      item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === container.id
+    ).length;
+  }
+
   async _removeItemFromContainer(item) {
     const containerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG);
     if (!containerId) return;
@@ -67,7 +74,14 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         const entryId = String(entry.itemId ?? entry.id ?? entry.itemUuid ?? entry.uuid ?? '');
         return entryId !== String(item.id) && entryId !== String(item.uuid);
       });
-      await container.setFlag(MODULE_ID, 'contents', contents);
+      const used = this.actor.items.contents.filter(contained =>
+        contained.id !== item.id &&
+        contained.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === containerId
+      ).length;
+      await container.update({
+        [`flags.${MODULE_ID}.contents`]: contents,
+        [`flags.${MODULE_ID}.used`]: used
+      });
     }
 
     await item.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
@@ -159,7 +173,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const weight   = it.getFlag(MODULE_ID, 'weight')   ?? '';
       const equipped = it.getFlag(MODULE_ID, 'equipped') ?? false;
       const capacity = it.getFlag(MODULE_ID, 'capacity') ?? null;
-      const used     = it.getFlag(MODULE_ID, 'used')     ?? null;
+      const used     = type === 'container' ? this._containerUsed(it) : null;
 
       // Weightless: spell/ability categories don't consume inventory slots
       const isWeightless = WEIGHTLESS_CATEGORIES.has(category);
@@ -260,7 +274,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
     // Check if dropped onto a trait list — assign category flag
     // Check drop target — trait list or charm slot
-    const traitList  = event.target?.closest?.('[data-category]');
+    const traitList  = event.target?.closest?.('.vellum-trait-list[data-category]');
     const charmSlot  = event.target?.closest?.('.vellum-charm-slot');
     const dropCategory = charmSlot ? 'charm' : (traitList?.dataset?.category ?? null);
     const RECLASSIFY_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);

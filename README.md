@@ -1,6 +1,6 @@
 # RNK™ Vellum
 
-**Version:** 1.2.7
+**Version:** 1.2.8
 **Compatibility:** Foundry VTT v13 – v14
 **System:** System agnostic (Shadowdark / Cairn optimized)
 **Author:** The Curator — RNK Enterprise
