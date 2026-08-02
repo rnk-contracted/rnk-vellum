@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.9] - 2026-08-02
+
+### Added
+- Inventory rows for weapons, armor/shields, and spells now show computed roll stats beside their name — e.g. `1d4 +2` for a weapon, `AC 11 + DEX` or `+2 AC` for armor/shields, `DC 13` for a spell — read directly from the game system's own item data.
+- Right-click context menu gained a **Vellum Settings** entry that always opens the Item Type / Category / Capacity configuration window, including for containers and notepads.
+
+### Changed
+- Items and containers now consume the number of inventory/container slots defined by the game system's own "Slots per item" field (e.g. Chain Mail, Plate Armor, Bastard Sword) instead of always counting as one slot.
+- The pencil icon on inventory rows now opens the game system's native item sheet (the same "Details / Description" editor as right-click > Edit) instead of the Vellum item configuration window; name-click still opens Vellum's configuration window.
+- Container capacity now defaults consistently to 6 slots everywhere it's read, instead of disagreeing between the container window and the item configuration sheet.
+
+### Fixed
+- A container could get permanently stuck with no way to change its Item Type back to standard or edit its capacity, because both the pencil and name-click always opened the container's contents window. Vellum Settings (above) now always provides a way in.
+
 ## [1.2.8] - 2026-07-17
 
 ### Changed

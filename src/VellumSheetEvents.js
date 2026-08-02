@@ -61,9 +61,10 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onItemEquip(e, actor))
     );
 
-    // Inventory — edit button
+    // Inventory — edit button (pencil): containers/notepads open their sub-window,
+    // everything else opens the game system's native item sheet (same as right-click > Edit)
     qa('.vellum-item-edit').forEach(node =>
-      node.addEventListener('click', e => VellumSheetEvents._onItemClick(e, actor))
+      node.addEventListener('click', e => VellumSheetEvents._onItemEditClick(e, actor))
     );
 
     // Inventory — roll attack/damage
@@ -107,9 +108,9 @@ export class VellumSheetEvents {
       VellumSheetEvents._bindTraitDrag(list, actor)
     );
 
-    // Charm slot — edit button (reuse item click handler)
+    // Charm slot — edit button (same native-sheet behavior as inventory pencils)
     q('.vellum-charm-row .vellum-item-edit')
-      ?.addEventListener('click', e => VellumSheetEvents._onItemClick(e, actor));
+      ?.addEventListener('click', e => VellumSheetEvents._onItemEditClick(e, actor));
 
     // Charm slot — remove (unequip from charm slot → reassign to gear)
     q('.vellum-charm-unequip')
@@ -202,6 +203,24 @@ export class VellumSheetEvents {
     new VellumItemSheet(item).render({ force: true });
   }
 
+  static async _onItemEditClick(event, actor) {
+    event.preventDefault();
+    const row    = event.currentTarget.closest('[data-item-id]');
+    const itemId = row?.dataset.itemId;
+    if (!itemId) return;
+
+    const item = actor.items.get(itemId);
+    if (!item) return;
+
+    const vellumType = item.getFlag(MODULE_ID, 'type');
+    // Containers and notepads still open their sub-window from the pencil.
+    if (vellumType === 'container') return UIManager.openContainer(item, actor);
+    if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
+    // Everything else opens the game system's native item sheet — the same
+    // "Details / Description" editor as right-click > Edit.
+    return item.sheet.render(true);
+  }
+
   static _onItemContext(event, actor, sheet) {
     event.preventDefault();
     event.stopPropagation();
@@ -221,7 +240,12 @@ export class VellumSheetEvents {
     menu.style.cssText = `position:fixed;left:${event.clientX}px;top:${event.clientY}px;z-index:9999`;
 
     const entries = [
-      { label: 'Edit',      action: () => item.sheet.render(true) },
+      { label: 'Edit',            action: () => item.sheet.render(true) },
+      { label: 'Vellum Settings', action: async () => {
+          const { VellumItemSheet } = await import('./VellumItemSheet.js');
+          new VellumItemSheet(item).render({ force: true });
+        }
+      },
       { label: 'Duplicate', action: async () => {
           const d = item.toObject();
           delete d._id;

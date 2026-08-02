@@ -4,7 +4,7 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES, CONTAINER_ID_FLAG } from './VellumDataModel.js';
+import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES, CONTAINER_ID_FLAG, itemSlotCost, weaponStatTag, armorStatTag, spellStatTag } from './VellumDataModel.js';
 import { VellumSheetEvents } from './VellumSheetEvents.js';
 import { toggleTokenGlow, refreshActorTokens } from './VellumTokenGlow.js';
 
@@ -52,14 +52,18 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static TRAIT_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);
 
   _inventoryUsed() {
-    return this._prepareInventory().filter(i => !i.isWeightless).length;
+    return this._prepareInventory()
+      .filter(i => !i.isWeightless)
+      .reduce((sum, i) => sum + i.slotCost, 0);
   }
 
   _containerUsed(container) {
-    return this.actor.items.contents.filter(item =>
-      item.id !== container.id &&
-      item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === container.id
-    ).length;
+    return this.actor.items.contents
+      .filter(item =>
+        item.id !== container.id &&
+        item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === container.id
+      )
+      .reduce((sum, item) => sum + itemSlotCost(item), 0);
   }
 
   async _removeItemFromContainer(item) {
@@ -116,7 +120,9 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const blessingCount = actorFlags.blessingCount ?? (game.settings.get(MODULE_ID, 'blessingCount') ?? 3);
 
     // Only physical (non-weightless) items consume inventory slots
-    const inventoryUsed = inventory.filter(i => !i.isWeightless).length;
+    const inventoryUsed = inventory
+      .filter(i => !i.isWeightless)
+      .reduce((sum, i) => sum + i.slotCost, 0);
     const xpLevel = Math.max(1, Math.min(vellum.level ?? 1, 20));
     const xpMax   = xpLevel * 10;
 
@@ -156,6 +162,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
   _prepareInventory() {
+    const vellum = getVellumData(this.actor);
     const slots = [];
     let autoSlot = 1000; // high number so auto-slotted items sort after manually slotted ones
     for (const it of this.actor.items.contents) {
@@ -174,6 +181,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       const equipped = it.getFlag(MODULE_ID, 'equipped') ?? false;
       const capacity = it.getFlag(MODULE_ID, 'capacity') ?? null;
       const used     = type === 'container' ? this._containerUsed(it) : null;
+      const slotCost = itemSlotCost(it);
 
       // Weightless: spell/ability categories don't consume inventory slots
       const isWeightless = WEIGHTLESS_CATEGORIES.has(category);
@@ -183,11 +191,19 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         || it.system?.damage?.parts?.length);
       const isRollable = ROLLABLE_CATEGORIES.has(category) || hasFormula;
 
+      // Roll-stat display: damage+mod for weapons, AC for armor/shields, DC for spells
+      let statTag = '';
+      if (category === 'weapon') statTag = weaponStatTag(it, vellum);
+      else if (category === 'armor' || category === 'shield') statTag = armorStatTag(it);
+      else if (category === 'spell') statTag = spellStatTag(it);
+
       // Build tags array for display
       const tags = [];
-      if (damage)  tags.push(damage);
+      if (statTag) tags.push(statTag);
+      else if (damage) tags.push(damage);
       if (category !== 'gear') tags.push(category.charAt(0).toUpperCase() + category.slice(1));
       if (weight)  tags.push(weight);
+      if (slotCost > 1) tags.push(`${slotCost} slots`);
       if (type === 'container' && capacity != null) tags.push(`${used ?? 0}/${capacity}`);
 
       slots.push({
@@ -206,7 +222,8 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         category,
         tags,
         capacity,
-        used
+        used,
+        slotCost
       });
     }
     return slots.sort((a, b) => a.slot - b.slot);
@@ -296,9 +313,10 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       !VellumActorSheet.TRAIT_CATEGORIES.has(nextCategory);
     const inventoryMax = Math.max(10, getVellumData(this.actor).str?.score ?? 10);
     const inventoryUsed = this._inventoryUsed();
+    const cost = itemSlotCost(item);
     const nextInventoryUsed = inventoryUsed
-      - (currentCountsTowardInventory ? 1 : 0)
-      + (nextCountsTowardInventory ? 1 : 0);
+      - (currentCountsTowardInventory ? cost : 0)
+      + (nextCountsTowardInventory ? cost : 0);
 
     if (nextCountsTowardInventory && nextInventoryUsed > inventoryMax) {
       ui.notifications.warn(`Inventory is full (${inventoryUsed}/${inventoryMax}).`);

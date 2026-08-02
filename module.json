@@ -2,7 +2,7 @@
   "id": "rnk-vellum",
   "title": "RNK™ Vellum",
   "description": "A system-agnostic character sheet for Foundry VTT with a Shadowdark/Cairn aesthetic. Features parchment styling, shield AC display, per-player blessing token counts, container sub-inventories, a Notepad item, token glow, and a GM Hub for per-actor customization.",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "authors": [
     {
       "name": "The Curator",
@@ -23,9 +23,9 @@
       "path": "lang/en.json"
     }
   ],
-  "url": "https://github.com/RNK-Enterprise/rnk-vellum",
-  "manifest": "https://github.com/RNK-Enterprise/rnk-vellum/releases/latest/download/module.json",
-  "download": "https://github.com/RNK-Enterprise/rnk-vellum/releases/latest/download/rnk-vellum.zip",
+  "url": "https://github.com/rnk-contracted/rnk-vellum",
+  "manifest": "https://github.com/rnk-contracted/rnk-vellum/releases/latest/download/module.json",
+  "download": "https://github.com/rnk-contracted/rnk-vellum/releases/latest/download/rnk-vellum.zip",
   "license": "LICENSE",
   "readme": "README.md"
 }

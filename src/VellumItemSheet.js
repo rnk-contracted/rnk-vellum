@@ -37,7 +37,7 @@ export class VellumItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
       isContainer:    type === 'container',
       isNotepad:      type === 'notepad',
       vellumSlot:     this.item.getFlag(MODULE_ID, 'slot')       ?? '',
-      vellumCapacity: this.item.getFlag(MODULE_ID, 'capacity')   ?? 3,
+      vellumCapacity: this.item.getFlag(MODULE_ID, 'capacity')   ?? 6,
       vellumUsed:     this.item.getFlag(MODULE_ID, 'used')       ?? 0,
       vellumNotes:    this.item.getFlag(MODULE_ID, 'notes')      ?? '',
       vellumDamage:   this.item.getFlag(MODULE_ID, 'damage')     ?? '',

@@ -5,7 +5,7 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { MODULE_ID, CONTAINER_ID_FLAG } from './VellumDataModel.js';
+import { MODULE_ID, CONTAINER_ID_FLAG, itemSlotCost } from './VellumDataModel.js';
 import { UIManager }  from './UIManager.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -46,6 +46,7 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
       const entry = entries[i] ?? null;
       const itemId = entry?.itemId ?? ContainerWindow._entryItemId(entry);
       const item   = itemId ? this._actor.items.get(itemId) : null;
+      const slotCost = item ? itemSlotCost(item) : 1;
       return {
         index:    i,
         itemId:   item?.id ?? entry?.itemId ?? '',
@@ -54,16 +55,23 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
         itemImg:  item?.img ?? '',
         label:    entry?.label ?? '',
         isLegacy: !!entry?.label && !item,
-        hasItem:  !!item
+        hasItem:  !!item,
+        slotCost,
+        showSlotCost: slotCost > 1
       };
     });
+    const used = entries.reduce((sum, entry) => {
+      const itemId = entry?.itemId ?? ContainerWindow._entryItemId(entry);
+      const item = itemId ? this._actor.items.get(itemId) : null;
+      return sum + (item ? itemSlotCost(item) : 1);
+    }, 0);
 
     return {
       item:     this._item,
       capacity,
       slots,
-      used:     entries.length,
-      overCapacity: entries.length > capacity,
+      used,
+      overCapacity: used > capacity,
       moduleId: MODULE_ID
     };
   }
@@ -236,8 +244,15 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     const nextEntries = entries.filter(entry => ContainerWindow._entryItemId(entry) !== currentId);
     const isNewToThisContainer = currentContainerId !== this._item.id && existingIndex === -1;
 
-    if (isNewToThisContainer && nextEntries.length >= capacity) {
-      ui.notifications.warn(`"${this._item.name}" is full (${nextEntries.length}/${capacity}).`);
+    const usedCost = nextEntries.reduce((sum, entry) => {
+      const id = ContainerWindow._entryItemId(entry);
+      const contained = id ? this._actor.items.get(id) : null;
+      return sum + (contained ? itemSlotCost(contained) : 1);
+    }, 0);
+    const itemCost = itemSlotCost(item);
+
+    if (isNewToThisContainer && usedCost + itemCost > capacity) {
+      ui.notifications.warn(`"${this._item.name}" is full (${usedCost}/${capacity}).`);
       return null;
     }
 

@@ -125,6 +125,85 @@ async function _syncSystemFields(actor, vellumData) {
 }
 
 /**
+ * Number of inventory slots an item occupies. Reads Shadowdark's own
+ * "Slots per item" field (system.slots.slots_used, scaled by quantity vs.
+ * per_slot) when present; defaults to 1 slot for other systems / item types.
+ * @param {Item} item
+ * @returns {number}
+ */
+export function itemSlotCost(item) {
+  const slots = item?.system?.slots;
+  if (!slots) return 1;
+  const perSlot    = Number(slots.per_slot) || 1;
+  const slotsUsed  = Number(slots.slots_used) || 1;
+  const quantity   = Number(item.system?.quantity) || 1;
+  const cost = Math.ceil(quantity / perSlot) * slotsUsed;
+  return Number.isFinite(cost) && cost > 0 ? cost : 1;
+}
+
+/**
+ * Weapon damage die + best-fit ability modifier, e.g. "1d4 +2".
+ * Shadowdark-only (reads system.damage / system.isWeapon); returns '' for
+ * items the current game system doesn't model this way.
+ * @param {Item} item
+ * @param {Object} vellum  Result of getVellumData(actor)
+ * @returns {string}
+ */
+export function weaponStatTag(item, vellum) {
+  const sys = item?.system;
+  if (!sys?.isWeapon) return '';
+
+  const dieKey = typeof sys.getDamageFormula === 'function'
+    ? sys.getDamageFormula()
+    : (sys.damage?.oneHanded || sys.damage?.twoHanded || '');
+  if (!dieKey) return '';
+  const dmg = CONFIG.SHADOWDARK?.WEAPON_BASE_DAMAGE?.[dieKey] ?? dieKey;
+
+  const isRanged  = sys.type === 'ranged';
+  const isFinesse = typeof sys.hasProperty === 'function' && sys.hasProperty('finesse');
+  const strScore  = vellum?.str?.score ?? 10;
+  const dexScore  = vellum?.dex?.score ?? 10;
+  const abilScore = isRanged ? dexScore : (isFinesse ? Math.max(strScore, dexScore) : strScore);
+  const mod = Math.floor((abilScore - 10) / 2);
+
+  return mod !== 0 ? `${dmg} ${mod > 0 ? '+' : ''}${mod}` : dmg;
+}
+
+/**
+ * Armor Class contribution, e.g. "AC 11 + DEX" for body armor or "+2 AC"
+ * for a shield. Shadowdark-only (reads system.ac); returns '' otherwise.
+ * @param {Item} item
+ * @returns {string}
+ */
+export function armorStatTag(item) {
+  const ac = item?.system?.ac;
+  if (!ac) return '';
+  const base = ac.base ?? 0;
+  const mod  = ac.modifier ?? 0;
+  const attr = ac.attribute ?? '';
+
+  if (base) {
+    let s = `AC ${base}`;
+    if (attr) s += ` + ${attr.toUpperCase()}`;
+    if (mod)  s += ` ${mod > 0 ? '+' : ''}${mod}`;
+    return s;
+  }
+  if (mod) return `${mod > 0 ? '+' : ''}${mod} AC`;
+  return '';
+}
+
+/**
+ * Spell save DC, e.g. "DC 13". Shadowdark-only (reads system.dc);
+ * returns '' otherwise.
+ * @param {Item} item
+ * @returns {string}
+ */
+export function spellStatTag(item) {
+  const dc = item?.system?.dc;
+  return dc != null ? `DC ${dc}` : '';
+}
+
+/**
  * Builds a processed stat array for template rendering.
  * Modifier is always auto-computed: floor((score - 10) / 2).
  * @param {Object} vellum
