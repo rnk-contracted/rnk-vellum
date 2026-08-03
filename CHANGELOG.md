@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.10] - 2026-08-03
+
+### Fixed
+- Editing Max HP now actually persists. It previously only saved to an internal flag and was silently reverted on the next sheet re-render (e.g. right after editing Current HP) because the sheet always trusted the live system value for HP, and the system was never told about the edit. Max HP now syncs to the actor the same way Current HP already did.
+
 ## [1.2.9] - 2026-08-02
 
 ### Added

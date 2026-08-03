@@ -102,10 +102,13 @@ export async function setVellumData(actor, updates) {
 async function _syncSystemFields(actor, vellumData) {
   const updates = {};
 
-  // HP current value only — max is derived by Shadowdark from CON + level/class
-  // and is overwritten on every actor update, so we never write it back.
+  // HP current and max both persist as plain fields in Shadowdark (unlike AC
+  // below, the system never recomputes hp.max on its own), so both sync back —
+  // otherwise an edited max reverts to the stale system value on the next
+  // render, since getVellumData's bridge always prefers the system value.
   if (actor.system?.attributes?.hp !== undefined) {
     updates['system.attributes.hp.value'] = vellumData.hp?.value ?? 0;
+    updates['system.attributes.hp.max']   = vellumData.hp?.max   ?? 0;
   }
 
   // AC is a derived/computed value in Shadowdark (armor + DEX mod) — do not write
