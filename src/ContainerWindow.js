@@ -78,7 +78,9 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
 
   // ─── Listeners ────────────────────────────────────────────────────────────
 
-  _onRender(context, options) {
+  async _onRender(context, options) {
+    await super._onRender?.(context, options);
+
     this.element.querySelectorAll('.vellum-container-slot').forEach(el => {
       el.addEventListener('dragover', e => this._onSlotDragOver(e));
       el.addEventListener('drop', e => this._onSlotDrop(e));
@@ -155,10 +157,18 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
     return entries;
   }
 
+  _usedSlotCost(entries) {
+    return entries.reduce((sum, entry) => {
+      const itemId = ContainerWindow._entryItemId(entry);
+      const item = itemId ? this._actor.items.get(itemId) : null;
+      return sum + (item ? itemSlotCost(item) : 1);
+    }, 0);
+  }
+
   async _saveContents(entries) {
     await this._item.update({
       [`flags.${MODULE_ID}.contents`]: entries,
-      [`flags.${MODULE_ID}.used`]: entries.length
+      [`flags.${MODULE_ID}.used`]: this._usedSlotCost(entries)
     });
     this.render();
   }
@@ -274,10 +284,12 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
           .map(ContainerWindow._normalizeEntry)
           .filter(Boolean)
           .filter(entry => ContainerWindow._entryItemId(entry) !== currentId);
-        const previousUsed = this._actor.items.contents.filter(contained =>
-          contained.id !== target.id &&
-          contained.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === currentContainerId
-        ).length;
+        const previousUsed = this._actor.items.contents
+          .filter(contained =>
+            contained.id !== target.id &&
+            contained.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === currentContainerId
+          )
+          .reduce((sum, contained) => sum + itemSlotCost(contained), 0);
         await previous.update({
           [`flags.${MODULE_ID}.contents`]: previousEntries,
           [`flags.${MODULE_ID}.used`]: previousUsed

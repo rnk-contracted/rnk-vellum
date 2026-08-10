@@ -52,6 +52,16 @@ export function registerSettings() {
     type:    Number,
     default: DEFAULTS.blessingCount
   });
+
+  // Client settings dialog (Module Settings → Configure)
+  game.settings.registerMenu(MODULE_ID, 'clientSettings', {
+    name:       'RNK™ Vellum Client Settings',
+    label:      'Open Settings',
+    hint:       'Portrait glow and default blessing token appearance.',
+    icon:       'fas fa-feather-alt',
+    type:       VellumSettingsApp,
+    restricted: false
+  });
 }
 
 /** Read saved settings and inject them as CSS vars on all .rnk-vellum elements. */
@@ -108,7 +118,8 @@ export class VellumSettingsApp extends HandlebarsApplicationMixin(ApplicationV2)
     };
   }
 
-  _onRender(context, options) {
+  async _onRender(context, options) {
+    await super._onRender?.(context, options);
     const el = this.element;
 
     // Live preview as sliders / color move
@@ -149,10 +160,10 @@ export class VellumSettingsApp extends HandlebarsApplicationMixin(ApplicationV2)
     // Save
     el.querySelector('[data-action="save"]').addEventListener('click', async () => {
       await game.settings.set(MODULE_ID, 'glowColor',     colorInput.value);
-      await game.settings.set(MODULE_ID, 'glowBlur',      parseInt(blurInput.value));
-      await game.settings.set(MODULE_ID, 'glowSpread',    parseInt(spreadInput.value));
+      await game.settings.set(MODULE_ID, 'glowBlur',      parseInt(blurInput.value, 10));
+      await game.settings.set(MODULE_ID, 'glowSpread',    parseInt(spreadInput.value, 10));
       await game.settings.set(MODULE_ID, 'blessingColor', blessingInput.value);
-      await game.settings.set(MODULE_ID, 'blessingCount', parseInt(blessingCount.value));
+      await game.settings.set(MODULE_ID, 'blessingCount', parseInt(blessingCount.value, 10));
       applyGlowVars();
       ui.notifications.info('RNK™ Vellum: Settings saved.');
       this.close();

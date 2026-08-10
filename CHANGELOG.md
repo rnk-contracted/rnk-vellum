@@ -5,6 +5,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.12] - 2026-08-10
+
+### Added
+- **Description** free-text field in the header (replaces the old size-dropdown idea from the PDF).
+- **Attacks & Abilities** section listing weapons, spells, and abilities for quick rolls.
+- Cairn-style **numbered inventory slots** (`1 … STR`, min 10) with empty rows visible; drop onto a slot to assign it.
+
+### Changed
+- Background labels match commission feedback: **Talents** + **Traits** (Flaws box renamed to Traits). **Knowledge** always shown with them. Phobia and Effects retained.
+- PC portrait is taller (~2× prior square) and stretches to the bottom of the header.
+- Containers and Notepads open on **double-click** of the name (pencil still opens them). Standard items open on single click.
+- README feature list updated to match actual UI behavior.
+
+## [1.2.11] - 2026-08-10
+
+### Added
+- Flaws and Effects text fields on the actor sheet (persisted in vellum flag data).
+- Client settings menu under Module Settings → **Open Settings** (portrait glow / blessing defaults).
+- Handlebars `capitalize` helper for the item sheet type/category labels.
+
+### Fixed
+- Re-opening a container or notepad no longer throws (`bringToTop` → ApplicationV2 `bringToFront`).
+- GM Hub glow/color saves no longer wipe per-actor blessing token count.
+- GM Hub reuses a single window via `foundry.applications.instances` instead of spawning duplicates.
+- GM Hub live CSS updates only affect that actor’s open sheet (`data-actor-id` scoping).
+- Vellum item sheet now saves name, description, and image (FilePicker); description supports string or `{ value }` system shapes.
+- Container `used` flag stores total slot cost (not item count).
+- AC is read-only when the game system owns Armor Class, so edits are not silently overwritten.
+
+### Changed
+- Drag-reorder logic moved to `VellumSheetDrag.js` so sheet event code stays under the 500 LOC file cap.
+
 ## [1.2.10] - 2026-08-03
 
 ### Fixed

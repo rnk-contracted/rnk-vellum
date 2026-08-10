@@ -20,7 +20,8 @@ export class UIManager {
     const key = `container:${item.id}`;
 
     if (_registry.has(key)) {
-      _registry.get(key).bringToTop();
+      const existing = _registry.get(key);
+      existing.bringToFront?.();
       return;
     }
 
@@ -39,7 +40,8 @@ export class UIManager {
     const key = `notepad:${item.id}`;
 
     if (_registry.has(key)) {
-      _registry.get(key).bringToTop();
+      const existing = _registry.get(key);
+      existing.bringToFront?.();
       return;
     }
 

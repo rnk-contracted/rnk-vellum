@@ -6,7 +6,7 @@
 
 import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES, CONTAINER_ID_FLAG, itemSlotCost, weaponStatTag, armorStatTag, spellStatTag } from './VellumDataModel.js';
 import { VellumSheetEvents } from './VellumSheetEvents.js';
-import { toggleTokenGlow, refreshActorTokens } from './VellumTokenGlow.js';
+import { toggleTokenGlow } from './VellumTokenGlow.js';
 
 const { ActorSheetV2 } = foundry.applications.sheets;
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -78,10 +78,12 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         const entryId = String(entry.itemId ?? entry.id ?? entry.itemUuid ?? entry.uuid ?? '');
         return entryId !== String(item.id) && entryId !== String(item.uuid);
       });
-      const used = this.actor.items.contents.filter(contained =>
-        contained.id !== item.id &&
-        contained.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === containerId
-      ).length;
+      const used = this.actor.items.contents
+        .filter(contained =>
+          contained.id !== item.id &&
+          contained.getFlag(MODULE_ID, CONTAINER_ID_FLAG) === containerId
+        )
+        .reduce((sum, contained) => sum + itemSlotCost(contained), 0);
       await container.update({
         [`flags.${MODULE_ID}.contents`]: contents,
         [`flags.${MODULE_ID}.used`]: used
@@ -98,21 +100,27 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const invMax = Math.max(10, vellum.str?.score ?? 10);
 
     const inventory = this._prepareInventory();
-    const inventoryGroups = this._groupInventory(inventory);
+    const { attacksItems, inventorySlots } = this._splitInventory(inventory, invMax);
     const charmItem = this._prepareCharmItem();
 
+    // Always show Talents, Traits, Knowledge (Adrian: Flaws box → Traits, box above → Talents).
     const SECTION_DEFAULTS = ['talent', 'trait', 'knowledge'];
+    const SECTION_LABELS = { talent: 'Talents', trait: 'Traits', knowledge: 'Knowledge' };
     const savedOrder = this.actor.getFlag(MODULE_ID, 'bgSectionOrder');
-    const sectionOrder = Array.isArray(savedOrder) ? savedOrder : SECTION_DEFAULTS;
+    let sectionOrder = Array.isArray(savedOrder)
+      ? savedOrder.filter(k => SECTION_LABELS[k])
+      : [...SECTION_DEFAULTS];
+    for (const key of SECTION_DEFAULTS) {
+      if (!sectionOrder.includes(key)) sectionOrder.push(key);
+    }
     const sectionItems = {
       talent:    this._prepareTraitItems('talent'),
       trait:     this._prepareTraitItems('trait'),
       knowledge: this._prepareTraitItems('knowledge'),
     };
-    const SECTION_LABELS = { talent: 'Talents', trait: 'Traits', knowledge: 'Knowledge' };
     const bgSections = sectionOrder.map(key => ({
       key,
-      label: SECTION_LABELS[key] ?? key,
+      label: SECTION_LABELS[key],
       items: sectionItems[key] ?? []
     }));
 
@@ -126,13 +134,19 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const xpLevel = Math.max(1, Math.min(vellum.level ?? 1, 20));
     const xpMax   = xpLevel * 10;
 
+    // When the game system owns AC, the sheet displays it read-only so edits
+    // are not silently overwritten by getVellumData's system bridge.
+    const acFromSystem = this.actor.system?.attributes?.ac !== undefined;
+
     return {
       actor:           this.actor,
       vellum,
       statsLeft:       buildStats(vellum, ['str', 'dex', 'con']),
       statsRight:      buildStats(vellum, ['int', 'wis', 'cha']),
       inventory,
-      inventoryGroups,
+      attacksItems,
+      hasAttacks:      attacksItems.length > 0,
+      inventorySlots,
       inventoryUsed,
       inventoryMax:    invMax,
       charmItem,
@@ -142,6 +156,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       showB2:          blessingCount >= 2,
       showB3:          blessingCount >= 3,
       tokenGlowEnabled: this.actor.getFlag(MODULE_ID, 'tokenGlow') ?? false,
+      acFromSystem,
       xpMax,
       moduleId:      MODULE_ID,
       isOwner:       this.actor.isOwner,
@@ -229,44 +244,54 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     return slots.sort((a, b) => a.slot - b.slot);
   }
 
-  _groupInventory(inventory) {
-    // Default category order — can be reordered by the user
-    const DEFAULT_ORDER = ['weapon', 'armor', 'shield', 'consumable', 'tool', 'spell', 'ability', 'container', 'notepad', 'misc', 'gear'];
-    const saved = this.actor.getFlag(MODULE_ID, 'groupOrder');
-    const order = Array.isArray(saved) ? saved : DEFAULT_ORDER;
+  /**
+   * Split prepared inventory into:
+   * - Attacks & Abilities (weapons / spells / abilities) for quick combat use
+   * - Numbered pack slots (all physical gear, Cairn-style 1..max)
+   * Weapons appear in both: rollable up top, and as numbered pack entries.
+   */
+  _splitInventory(inventory, invMax) {
+    const ATTACK_CATS = new Set(['weapon', 'spell', 'ability']);
+    const attacksItems = inventory.filter(i =>
+      ATTACK_CATS.has(i.category) || i.isWeapon
+    );
+    const packItems = inventory.filter(i => !i.isWeightless);
+    const inventorySlots = this._buildNumberedSlots(packItems, invMax);
+    return { attacksItems, inventorySlots };
+  }
 
-    // Bucket items by category
-    const buckets = new Map();
-    for (const item of inventory) {
-      const key = item.isContainer ? 'container' : item.isNotepad ? 'notepad' : (item.category ?? 'gear');
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key).push(item);
-    }
+  /** Build Cairn-style numbered slots 1..invMax (plus overflow rows if needed). */
+  _buildNumberedSlots(items, invMax) {
+    const sorted = [...items].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
+    const occupied = new Map(); // slotNum -> item
+    let cursor = 1;
 
-    // Build ordered groups, only include categories that have items
-    const groups = [];
-    for (const cat of order) {
-      if (buckets.has(cat)) {
-        groups.push({
-          category:   cat,
-          label:      cat.charAt(0).toUpperCase() + cat.slice(1),
-          items:      buckets.get(cat),
-          isWeightless: WEIGHTLESS_CATEGORIES.has(cat)
-        });
-        buckets.delete(cat);
+    for (const item of sorted) {
+      let n = Number(item.slot);
+      if (!Number.isFinite(n) || n < 1 || n > invMax || occupied.has(n)) {
+        while (occupied.has(cursor) && cursor <= invMax) cursor++;
+        n = cursor <= invMax ? cursor : (sorted.indexOf(item) + invMax + 1);
       }
+      occupied.set(n, item);
+      if (n === cursor) cursor++;
     }
-    // Any leftover categories not in the order list
-    for (const [cat, items] of buckets) {
-      groups.push({
-        category:   cat,
-        label:      cat.charAt(0).toUpperCase() + cat.slice(1),
-        items,
-        isWeightless: WEIGHTLESS_CATEGORIES.has(cat)
+
+    const slots = [];
+    for (let i = 1; i <= invMax; i++) {
+      const item = occupied.get(i) ?? null;
+      slots.push({
+        slotNum: i,
+        empty: !item,
+        overflow: false,
+        ...(item ? item : {})
       });
     }
-
-    return groups;
+    for (const [n, item] of occupied) {
+      if (n > invMax) {
+        slots.push({ slotNum: n, empty: false, overflow: true, ...item });
+      }
+    }
+    return slots;
   }
 
   _prepareTraitItems(category) {
@@ -289,11 +314,12 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   async _onDropItem(event, item) {
     if (!this.actor.isOwner) return null;
 
-    // Check if dropped onto a trait list — assign category flag
-    // Check drop target — trait list or charm slot
+    // Check drop target — trait list, charm slot, or numbered inventory slot
     const traitList  = event.target?.closest?.('.vellum-trait-list[data-category]');
     const charmSlot  = event.target?.closest?.('.vellum-charm-slot');
+    const packSlot   = event.target?.closest?.('.vellum-inv-slot[data-slot-num]');
     const dropCategory = charmSlot ? 'charm' : (traitList?.dataset?.category ?? null);
+    const targetSlotNum = packSlot ? Number(packSlot.dataset.slotNum) : null;
     const RECLASSIFY_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);
     const currentCategory = item.getFlag(MODULE_ID, 'category') ?? 'gear';
     const currentContainerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) ?? null;
@@ -340,6 +366,15 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
       if (currentContainerId && !dropCategory) {
         await this._removeItemFromContainer(item);
+        if (Number.isFinite(targetSlotNum) && targetSlotNum >= 1) {
+          await item.setFlag(MODULE_ID, 'slot', targetSlotNum);
+        }
+        return item;
+      }
+
+      // Drop onto a numbered pack slot → assign that slot index
+      if (Number.isFinite(targetSlotNum) && targetSlotNum >= 1) {
+        await item.setFlag(MODULE_ID, 'slot', targetSlotNum);
         return item;
       }
 
@@ -364,6 +399,9 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       await created.setFlag(MODULE_ID, 'category', dropCategory);
     }
     if (created && currentContainerId) await created.unsetFlag(MODULE_ID, CONTAINER_ID_FLAG);
+    if (created && Number.isFinite(targetSlotNum) && targetSlotNum >= 1) {
+      await created.setFlag(MODULE_ID, 'slot', targetSlotNum);
+    }
     return created ?? null;
   }
 
@@ -375,6 +413,8 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
   async _onRender(context, options) {
     await super._onRender(context, options);
+    // Tag the root so GM Hub can scope live CSS updates to this actor only.
+    if (this.element) this.element.dataset.actorId = this.actor.id;
     this._applyActorSettings();
     if (!this.isEditable) return;
     VellumSheetEvents.bind(this.element, this);
@@ -401,3 +441,4 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
 }
+

@@ -193,27 +193,34 @@
 /* ── HEADER ROW ──────────────────────────────────────────────────────────── */
 .vellum-header {
   display: grid;
-  grid-template-columns: 170px 1fr 120px;
+  grid-template-columns: 180px 1fr 120px;
   gap: 6px;
   border: 1px solid var(--vellum-border);
   padding: 6px;
   background: var(--vellum-parchment-dk);
-  align-items: start;
+  align-items: stretch;
 }
 
 .vellum-portrait-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: stretch;
   gap: 3px;
+  align-self: stretch;
+  min-height: 220px;
 }
 
 .vellum-portrait {
-  width: 158px;
-  height: 158px;
+  width: 168px;
+  /* ~2× the old square portrait, fills header depth */
+  height: 100%;
+  min-height: 220px;
+  max-height: 280px;
   object-fit: cover;
   cursor: pointer;
   display: block;
+  flex: 1;
   /* Organic portrait cutout — tapered top, rounded bottom */
   clip-path: polygon(
     18% 0%, 82% 0%,
@@ -382,6 +389,11 @@
   fill: var(--vellum-parchment-dk);
   stroke: var(--vellum-border);
   stroke-width: 2.5;
+}
+
+.vellum-ac-input[readonly] {
+  cursor: default;
+  opacity: 0.9;
 }
 
 .vellum-ac-input {
@@ -816,6 +828,85 @@
 }
 
 /* ── Inventory ───────────────────────────────────────────────────────────── */
+/* ── Attacks & Abilities ─────────────────────────────────────────────────── */
+.vellum-attacks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--vellum-grid-line);
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--vellum-radius);
+  padding: 2px;
+}
+
+.vellum-attacks-empty {
+  font-size: 0.72rem;
+  color: var(--vellum-ink-faded);
+  font-style: italic;
+  opacity: 0.6;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+/* ── Numbered pack slots (Cairn-style) ───────────────────────────────────── */
+.vellum-inventory-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.vellum-inv-slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  border-bottom: 1px solid var(--vellum-grid-line);
+  padding: 1px 2px;
+}
+
+.vellum-inv-slot:last-child { border-bottom: none; }
+
+.vellum-inv-slot-num {
+  flex-shrink: 0;
+  width: 1.6rem;
+  font-size: 0.68rem;
+  font-family: var(--vellum-font-label);
+  color: var(--vellum-ink-faded);
+  text-align: right;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.vellum-inv-slot--empty {
+  background: rgba(0,0,0,0.03);
+}
+
+.vellum-inv-slot--empty:hover {
+  background: rgba(200,160,100,0.08);
+}
+
+.vellum-inv-slot--overflow {
+  border-left: 2px solid var(--vellum-accent);
+}
+
+.vellum-inv-slot-empty {
+  flex: 1;
+  font-size: 0.72rem;
+  color: var(--vellum-ink-faded);
+  opacity: 0.35;
+  padding: 2px 4px;
+}
+
+.vellum-inv-slot .vellum-inv-row {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+}
+
 .vellum-inventory-cell {
   display: flex;
   flex-direction: column;

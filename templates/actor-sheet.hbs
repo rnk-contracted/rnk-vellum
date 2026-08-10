@@ -4,7 +4,7 @@
 
   <div class="vellum-header">
 
-    {{!-- Portrait --}}
+    {{!-- Portrait — tall cutout matching header height --}}
     <div class="vellum-portrait-cell">
       <img class="vellum-portrait" src="{{actor.img}}"
            title="Click to change portrait" alt="Portrait" />
@@ -21,6 +21,12 @@
         <span class="vellum-label">Class:</span>
         <input class="vellum-input" type="text"
                data-vellum-field="className" value="{{vellum.className}}" />
+      </div>
+      <div class="vellum-row">
+        <span class="vellum-label">Description:</span>
+        <input class="vellum-input" type="text"
+               data-vellum-field="description" value="{{vellum.description}}"
+               placeholder="e.g. a scarred ferryman of the black river" />
       </div>
       <div class="vellum-row vellum-row--level">
         <span class="vellum-label">Level:</span>
@@ -88,7 +94,8 @@
             </svg>
             <input class="vellum-ac-input" type="text"
                    data-vellum-field="ac" value="{{vellum.ac}}"
-                   title="Armor Class - e.g. 10, 10+1, 10/12" />
+                   {{#if acFromSystem}}readonly{{/if}}
+                   title="{{#if acFromSystem}}Armor Class (from game system){{else}}Armor Class - e.g. 10, 10+1, 10/12{{/if}}" />
           </div>
         </div>
 
@@ -121,6 +128,7 @@
         </div>
       </div>
 
+      {{!-- Talents / Traits (Adrian: Flaws → Traits, upper box → Talents) --}}
       <div class="vellum-bg-sections" id="vellum-bg-sections">
         {{#each bgSections}}
         <div class="vellum-bg-section" data-section="{{key}}" draggable="true">
@@ -151,6 +159,12 @@
                data-vellum-field="phobia" value="{{vellum.phobia}}" />
       </div>
 
+      <div class="vellum-bg-block">
+        <span class="vellum-bg-label">Effects</span>
+        <textarea class="vellum-textarea" rows="2"
+                  data-vellum-field="effects">{{vellum.effects}}</textarea>
+      </div>
+
       <div class="vellum-gp-row">
         <span class="vellum-label">GP:</span>
         <input class="vellum-input vellum-input--sm" type="number"
@@ -178,8 +192,51 @@
 
     </div>
 
-    {{!-- Inventory --}}
+    {{!-- Right column: Attacks & Abilities + numbered Inventory --}}
     <div class="vellum-inventory-cell">
+
+      {{!-- Attacks & Abilities (Adrian request) --}}
+      <div class="vellum-section-header">Attacks &amp; Abilities</div>
+      <div class="vellum-attacks-list" id="vellum-attacks">
+        {{#if hasAttacks}}
+          {{#each attacksItems}}
+          <div class="vellum-inv-row {{#if equipped}}vellum-inv-row--equipped{{/if}}"
+               data-slot="{{slot}}"
+               data-item-id="{{itemId}}"
+               data-is-weapon="{{isWeapon}}"
+               data-is-container="{{isContainer}}"
+               data-is-notepad="{{isNotepad}}"
+               draggable="true">
+            <div class="vellum-inv-main">
+              {{#if itemImg}}
+              <img class="vellum-inv-img" src="{{itemImg}}" alt="" />
+              {{/if}}
+              <div class="vellum-inv-info">
+                <span class="vellum-item-name" title="{{#if isContainer}}Double-click to open container{{else}}{{#if isNotepad}}Double-click to open notepad{{else}}Click to open{{/if}}{{/if}}">{{itemName}}</span>
+                {{#if tags.length}}
+                <span class="vellum-inv-tags">
+                  {{#each tags}}<span class="vellum-inv-tag">{{this}}</span>{{/each}}
+                </span>
+                {{/if}}
+              </div>
+            </div>
+            <div class="vellum-inv-actions">
+              {{#if isRollable}}
+              <button type="button" class="vellum-inv-btn vellum-item-roll" title="Roll">&#9860;</button>
+              {{/if}}
+              <button type="button" class="vellum-inv-btn vellum-item-equip"
+                      title="{{#if equipped}}Unequip{{else}}Equip{{/if}}">{{#if equipped}}▼{{else}}▲{{/if}}</button>
+              <button type="button" class="vellum-inv-btn vellum-item-edit" title="Edit">✎</button>
+              <button type="button" class="vellum-inv-btn vellum-item-delete" title="Remove">✕</button>
+            </div>
+          </div>
+          {{/each}}
+        {{else}}
+          <div class="vellum-attacks-empty">No weapons, spells, or abilities yet.</div>
+        {{/if}}
+      </div>
+
+      {{!-- Cairn-style numbered inventory --}}
       <div class="vellum-section-header">
         Inventory
         <span class="vellum-inv-counter">{{inventoryUsed}}/{{inventoryMax}}</span>
@@ -194,30 +251,26 @@
         </div>
         {{/if}}
       </div>
-      <div class="vellum-inventory-list" id="vellum-inv-groups">
+      <div class="vellum-inventory-list vellum-inventory-slots" id="vellum-inv-slots">
 
-        {{#each inventoryGroups}}
-        <div class="vellum-inv-group {{#if isWeightless}}vellum-inv-group--weightless{{/if}}" data-category="{{category}}" draggable="true">
-
-          <div class="vellum-inv-group-header">
-            <span class="vellum-inv-group-drag" title="Drag to reorder">⠿</span>
-            <span class="vellum-inv-group-label">{{label}}</span>
-            <span class="vellum-inv-group-count">{{items.length}}</span>
-          </div>
-
-          {{#each items}}
+        {{#each inventorySlots}}
+        <div class="vellum-inv-slot {{#if empty}}vellum-inv-slot--empty{{else}}vellum-inv-slot--filled{{/if}}{{#if overflow}} vellum-inv-slot--overflow{{/if}}"
+             data-slot-num="{{slotNum}}">
+          <span class="vellum-inv-slot-num">{{slotNum}}.</span>
+          {{#unless empty}}
           <div class="vellum-inv-row {{#if equipped}}vellum-inv-row--equipped{{/if}}"
                data-slot="{{slot}}"
                data-item-id="{{itemId}}"
                data-is-weapon="{{isWeapon}}"
+               data-is-container="{{isContainer}}"
+               data-is-notepad="{{isNotepad}}"
                draggable="true">
-
             <div class="vellum-inv-main">
               {{#if itemImg}}
               <img class="vellum-inv-img" src="{{itemImg}}" alt="" />
               {{/if}}
               <div class="vellum-inv-info">
-                <span class="vellum-item-name">{{itemName}}</span>
+                <span class="vellum-item-name" title="{{#if isContainer}}Double-click to open container{{else}}{{#if isNotepad}}Double-click to open notepad{{else}}Click to open{{/if}}{{/if}}">{{itemName}}</span>
                 {{#if tags.length}}
                 <span class="vellum-inv-tags">
                   {{#each tags}}<span class="vellum-inv-tag">{{this}}</span>{{/each}}
@@ -225,7 +278,6 @@
                 {{/if}}
               </div>
             </div>
-
             <div class="vellum-inv-actions">
               {{#if isRollable}}
               <button type="button" class="vellum-inv-btn vellum-item-roll" title="Roll">&#9860;</button>
@@ -235,10 +287,10 @@
               <button type="button" class="vellum-inv-btn vellum-item-edit" title="Edit">✎</button>
               <button type="button" class="vellum-inv-btn vellum-item-delete" title="Remove">✕</button>
             </div>
-
           </div>
-          {{/each}}
-
+          {{else}}
+          <div class="vellum-inv-slot-empty">—</div>
+          {{/unless}}
         </div>
         {{/each}}
 

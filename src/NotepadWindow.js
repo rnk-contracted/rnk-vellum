@@ -48,7 +48,8 @@ export class NotepadWindow extends HandlebarsApplicationMixin(ApplicationV2) {
 
   // ─── Listeners ────────────────────────────────────────────────────────────
 
-  _onRender(context, options) {
+  async _onRender(context, options) {
+    await super._onRender?.(context, options);
     const textarea = this.element.querySelector('.notepad-body');
     if (!textarea) return;
 

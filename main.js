@@ -12,6 +12,10 @@ const MODULE_ID = 'rnk-vellum';
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('add', (a, b) => Number(a) + Number(b));
+Handlebars.registerHelper('capitalize', (value) => {
+  const s = value == null ? '' : String(value);
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+});
 
 function inferVellumCategory(item) {
   const t = (item.type ?? '').toLowerCase();

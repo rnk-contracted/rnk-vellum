@@ -6,6 +6,7 @@
 
 import { setVellumData, getVellumData, MODULE_ID, WEIGHTLESS_CATEGORIES } from './VellumDataModel.js';
 import { UIManager } from './UIManager.js';
+import { VellumSheetDrag } from './VellumSheetDrag.js';
 
 export class VellumSheetEvents {
 
@@ -46,10 +47,12 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onItemAdd(e, actor))
     );
 
-    // Inventory — left-click item name opens sheet / sub-window
-    qa('.vellum-item-name').forEach(node =>
-      node.addEventListener('click', e => VellumSheetEvents._onItemClick(e, actor))
-    );
+    // Inventory — left-click item name opens sheet (standard items).
+    // Containers / notepads open on double-click (Cairn-style).
+    qa('.vellum-item-name').forEach(node => {
+      node.addEventListener('click', e => VellumSheetEvents._onItemClick(e, actor));
+      node.addEventListener('dblclick', e => VellumSheetEvents._onItemDblClick(e, actor));
+    });
 
     // Inventory — right-click row opens context menu
     qa('.vellum-inv-row').forEach(node =>
@@ -61,8 +64,7 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onItemEquip(e, actor))
     );
 
-    // Inventory — edit button (pencil): containers/notepads open their sub-window,
-    // everything else opens the game system's native item sheet (same as right-click > Edit)
+    // Inventory — edit button (pencil)
     qa('.vellum-item-edit').forEach(node =>
       node.addEventListener('click', e => VellumSheetEvents._onItemEditClick(e, actor))
     );
@@ -77,15 +79,12 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onItemDelete(e, actor))
     );
 
-    // Inventory rows may be dragged into containers
+    // Inventory rows may be dragged into containers or other pack slots
     qa('.vellum-inv-row').forEach(node =>
-      node.addEventListener('dragstart', e => VellumSheetEvents._onInventoryDragStart(e, actor))
+      node.addEventListener('dragstart', e => VellumSheetDrag.onInventoryDragStart(e, actor))
     );
 
-    // Inventory group drag-to-reorder
-    VellumSheetEvents._bindGroupDrag(el, actor);
-
-    // Trait/Talent/Knowledge — add buttons
+    // Trait/Talent — add buttons
     qa('.vellum-trait-add').forEach(node =>
       node.addEventListener('click', e => VellumSheetEvents._onTraitAdd(e, actor))
     );
@@ -100,19 +99,19 @@ export class VellumSheetEvents {
       node.addEventListener('click', e => VellumSheetEvents._onTraitClick(e, actor))
     );
 
-    // Background sections — drag to reorder (Talents / Traits / Knowledge)
-    VellumSheetEvents._bindSectionDrag(el, actor);
+    // Background sections — drag to reorder
+    VellumSheetDrag.bindSectionDrag(el, actor);
 
     // Trait rows — drag to reorder within each list
     qa('.vellum-trait-list').forEach(list =>
-      VellumSheetEvents._bindTraitDrag(list, actor)
+      VellumSheetDrag.bindTraitDrag(list, actor)
     );
 
-    // Charm slot — edit button (same native-sheet behavior as inventory pencils)
+    // Charm slot — edit button
     q('.vellum-charm-row .vellum-item-edit')
       ?.addEventListener('click', e => VellumSheetEvents._onItemEditClick(e, actor));
 
-    // Charm slot — remove (unequip from charm slot → reassign to gear)
+    // Charm slot — remove
     q('.vellum-charm-unequip')
       ?.addEventListener('click', e => VellumSheetEvents._onCharmUnequip(e, actor));
 
@@ -131,6 +130,7 @@ export class VellumSheetEvents {
     event.preventDefault();
     const el    = event.currentTarget;
     const field = el.dataset.vellumField;
+    if (el.readOnly) return;
     const value = el.type === 'number' ? Number(el.value) : el.value;
     await setVellumData(actor, foundry.utils.expandObject({ [field]: value }));
     if (field === 'level') {
@@ -177,8 +177,6 @@ export class VellumSheetEvents {
     if (!created) return;
     if (invType !== 'standard') await created.setFlag(MODULE_ID, 'type', invType);
 
-    // Containers open the sub-inventory window; notepads open the note editor;
-    // standard items open the VellumItemSheet config.
     if (invType === 'container') return UIManager.openContainer(created, actor);
     if (invType === 'notepad')   return UIManager.openNotepad(created, actor);
     const { VellumItemSheet } = await import('./VellumItemSheet.js');
@@ -195,12 +193,25 @@ export class VellumSheetEvents {
     if (!item) return;
 
     const vellumType = item.getFlag(MODULE_ID, 'type');
-    // Containers and notepads always open their sub-window (both name click and edit pencil)
-    if (vellumType === 'container') return UIManager.openContainer(item, actor);
-    if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
-    // Open our V2 sheet explicitly — avoids Shadowdark’s V1 ItemSheetSD
+    // Containers / notepads open on double-click only (Cairn-style).
+    if (vellumType === 'container' || vellumType === 'notepad') return;
+
     const { VellumItemSheet } = await import('./VellumItemSheet.js');
     new VellumItemSheet(item).render({ force: true });
+  }
+
+  static async _onItemDblClick(event, actor) {
+    event.preventDefault();
+    const row    = event.currentTarget.closest('[data-item-id]');
+    const itemId = row?.dataset.itemId;
+    if (!itemId) return;
+
+    const item = actor.items.get(itemId);
+    if (!item) return;
+
+    const vellumType = item.getFlag(MODULE_ID, 'type');
+    if (vellumType === 'container') return UIManager.openContainer(item, actor);
+    if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
   }
 
   static async _onItemEditClick(event, actor) {
@@ -213,11 +224,9 @@ export class VellumSheetEvents {
     if (!item) return;
 
     const vellumType = item.getFlag(MODULE_ID, 'type');
-    // Containers and notepads still open their sub-window from the pencil.
+    // Pencil still opens containers/notepads (discoverable without knowing dbl-click)
     if (vellumType === 'container') return UIManager.openContainer(item, actor);
     if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
-    // Everything else opens the game system's native item sheet — the same
-    // "Details / Description" editor as right-click > Edit.
     return item.sheet.render(true);
   }
 
@@ -232,7 +241,6 @@ export class VellumSheetEvents {
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    // Remove any existing context menu
     document.querySelector('.vellum-context-menu')?.remove();
 
     const menu = document.createElement('nav');
@@ -286,8 +294,6 @@ export class VellumSheetEvents {
     if (!item) return;
     const current = item.getFlag(MODULE_ID, 'equipped') ?? false;
     const next    = !current;
-    // Write vellum flag for display and also system.equipped so Shadowdark
-    // recalculates AC from equipped armor and DEX modifier correctly.
     const sysUpdate = {};
     if (item.system?.equipped !== undefined) sysUpdate['system.equipped'] = next;
     await item.setFlag(MODULE_ID, 'equipped', next);
@@ -310,31 +316,25 @@ export class VellumSheetEvents {
     const isNativeWeapon = (category === 'weapon' || typeSlug === 'weapon' || item.system?.isWeapon) && item.system?.isWeapon;
     const isNativeSpell  = (category === 'spell' || typeSlug === 'spell' || item.system?.isSpell) && item.system?.isSpell;
 
-    // Shadowdark native weapon flow.
     if (isNativeWeapon) {
       if (typeof actor.system?.rollAttack === 'function') {
         return actor.system.rollAttack(item.uuid, rollConfig);
       }
     }
 
-    // Shadowdark native spell flow.
     if (isNativeSpell) {
       if (typeof actor.system?.castSpell === 'function') {
         return VellumSheetEvents._castSpellForAnyActor(actor, item, rollConfig);
       }
     }
 
-    // Other physical items can still use system-native methods when present.
     if (!isSpell) {
       if (typeof item.rollAttack === 'function') return item.rollAttack();
       if (typeof item.roll === 'function') return item.roll();
       if (typeof item.use === 'function') return item.use();
     }
 
-    // Manual roll path (spells, abilities, and anything without a native roll).
     const vellum = getVellumData(actor);
-
-    // Formula: vellum flag first (user-set), then system paths, then default
     const flagFormula = item.getFlag(MODULE_ID, 'damage') || '';
     const sysFormula  = item.system?.damage?.formula
       || item.system?.damage?.parts?.[0]?.[0]
@@ -342,7 +342,6 @@ export class VellumSheetEvents {
       || '';
     const baseFormula = flagFormula || sysFormula || (isSpell ? '1d20' : '1d6');
 
-    // Modifier: WIS for spells/abilities, STR for weapons/gear
     const statKey  = isSpell ? 'wis' : 'str';
     const modScore = vellum[statKey]?.score ?? 10;
     const mod      = Math.floor((modScore - 10) / 2);
@@ -365,10 +364,8 @@ export class VellumSheetEvents {
       return model.castSpell(item.uuid, rollConfig);
     }
 
-    // Shadowdark normally rejects spell items when the actor has no casting
-    // class. Temporarily expose the system's existing "all items" path and a
-    // caster marker so its native dialog, roll hooks, spell loss, and chat card
-    // still run for every Vellum character.
+    // Shadowdark rejects spells when the actor has no casting class.
+    // Temporarily expose the "all items" path so native cast flow still runs.
     const marker = `${MODULE_ID}-universal-caster`;
     const previousAllowAllItems = spellcasting.allowAllItems;
     classes.push(marker);
@@ -390,162 +387,6 @@ export class VellumSheetEvents {
     const itemId = row?.dataset.itemId;
     if (!itemId) return;
     return actor.deleteEmbeddedDocuments('Item', [itemId]);
-  }
-
-  static async _onInventoryDragStart(event, actor) {
-    const row = event.currentTarget.closest('[data-item-id]');
-    const itemId = row?.dataset.itemId;
-    if (!itemId) return;
-    const item = actor.items.get(itemId);
-    if (!item) return;
-
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', JSON.stringify({
-      type: 'Item',
-      uuid: item.uuid,
-      id: item.id
-    }));
-  }
-
-  static _bindGroupDrag(el, actor) {
-    const list = el.querySelector('#vellum-inv-groups');
-    if (!list) return;
-    let dragged = null;
-
-    list.querySelectorAll('.vellum-inv-group').forEach(group => {
-      group.addEventListener('dragstart', e => {
-        dragged = group;
-        group.classList.add('vellum-inv-group--dragging');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-
-      group.addEventListener('dragend', () => {
-        group.classList.remove('vellum-inv-group--dragging');
-        list.querySelectorAll('.vellum-inv-group').forEach(g => g.classList.remove('vellum-inv-group--over'));
-        // Save new order to actor flag
-        const order = [...list.querySelectorAll('.vellum-inv-group')].map(g => g.dataset.category);
-        actor.setFlag(MODULE_ID, 'groupOrder', order);
-      });
-
-      group.addEventListener('dragover', e => {
-        e.preventDefault();
-        if (!dragged || dragged === group) return;
-        list.querySelectorAll('.vellum-inv-group').forEach(g => g.classList.remove('vellum-inv-group--over'));
-        group.classList.add('vellum-inv-group--over');
-
-        const rect = group.getBoundingClientRect();
-        const mid  = rect.top + rect.height / 2;
-        if (e.clientY < mid) {
-          list.insertBefore(dragged, group);
-        } else {
-          list.insertBefore(dragged, group.nextSibling);
-        }
-      });
-
-      group.addEventListener('dragleave', () => {
-        group.classList.remove('vellum-inv-group--over');
-      });
-    });
-  }
-
-  static _bindSectionDrag(el, actor) {
-    const container = el.querySelector('#vellum-bg-sections');
-    if (!container) return;
-    let dragged = null;
-
-    const getSections = () => [...container.querySelectorAll('.vellum-bg-section')];
-
-    getSections().forEach(section => {
-      // Only start drag from the section drag handle, not from inner elements
-      section.addEventListener('dragstart', e => {
-        if (!e.target.classList.contains('vellum-bg-section-drag')) return;
-        dragged = section;
-        section.classList.add('vellum-bg-section--dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'vellum-section-reorder');
-        e.stopPropagation();
-      });
-
-      section.addEventListener('dragend', () => {
-        if (!dragged) return;
-        section.classList.remove('vellum-bg-section--dragging');
-        getSections().forEach(s => s.classList.remove('vellum-bg-section--over'));
-        dragged = null;
-        const order = getSections().map(s => s.dataset.section);
-        actor.setFlag(MODULE_ID, 'bgSectionOrder', order);
-      });
-
-      section.addEventListener('dragover', e => {
-        if (!dragged || dragged === section) return;
-        e.preventDefault();
-        e.stopPropagation();
-        getSections().forEach(s => s.classList.remove('vellum-bg-section--over'));
-        section.classList.add('vellum-bg-section--over');
-        const rect = section.getBoundingClientRect();
-        if (e.clientY < rect.top + rect.height / 2) {
-          container.insertBefore(dragged, section);
-        } else {
-          container.insertBefore(dragged, section.nextSibling);
-        }
-      });
-
-      section.addEventListener('dragleave', () => {
-        section.classList.remove('vellum-bg-section--over');
-      });
-    });
-  }
-
-  static _bindTraitDrag(list, actor) {
-    let dragged = null;
-
-    const getRows = () => [...list.querySelectorAll('.vellum-trait-row')];
-
-    getRows().forEach(row => {
-      row.addEventListener('dragstart', e => {
-        dragged = row;
-        row.classList.add('vellum-trait-row--dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'vellum-trait-reorder');
-      });
-
-      row.addEventListener('dragend', () => {
-        row.classList.remove('vellum-trait-row--dragging');
-        getRows().forEach(r => r.classList.remove('vellum-trait-row--over'));
-        dragged = null;
-        // Persist new order — one update per item with traitSort index
-        const rows = getRows();
-        rows.forEach((r, i) => {
-          const item = actor.items.get(r.dataset.itemId);
-          if (item) item.setFlag(MODULE_ID, 'traitSort', i);
-        });
-      });
-
-      row.addEventListener('dragover', e => {
-        if (!dragged || dragged === row) return;
-        e.preventDefault();
-        getRows().forEach(r => r.classList.remove('vellum-trait-row--over'));
-        row.classList.add('vellum-trait-row--over');
-        const rect = row.getBoundingClientRect();
-        if (e.clientY < rect.top + rect.height / 2) {
-          list.insertBefore(dragged, row);
-        } else {
-          list.insertBefore(dragged, row.nextSibling);
-        }
-      });
-
-      row.addEventListener('dragleave', () => {
-        row.classList.remove('vellum-trait-row--over');
-      });
-    });
-
-    // Drop zone highlight for compendium drops (dragged is null = external drag)
-    list.addEventListener('dragover', e => {
-      if (dragged) return; // internal reorder handles its own feedback
-      e.preventDefault();
-      list.classList.add('drag-over');
-    });
-    list.addEventListener('dragleave', () => list.classList.remove('drag-over'));
-    list.addEventListener('drop', () => list.classList.remove('drag-over'));
   }
 
   static async _onStatRoll(event, actor) {
@@ -572,7 +413,6 @@ export class VellumSheetEvents {
     const category = event.currentTarget.dataset.category ?? 'trait';
     const label    = category.charAt(0).toUpperCase() + category.slice(1);
 
-    // Let the user pick the type via Foundry's built-in creation dialog
     const created = await Item.implementation.createDialog(
       { name: `New ${label}` },
       { parent: actor, pack: null }
@@ -608,7 +448,6 @@ export class VellumSheetEvents {
     if (!itemId) return;
     const item = actor.items.get(itemId);
     if (!item) return;
-    // Move item back to regular inventory (gear category)
     return item.setFlag(MODULE_ID, 'category', 'gear');
   }
 
