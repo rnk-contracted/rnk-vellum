@@ -5,7 +5,9 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { MODULE_ID, CONTAINER_ID_FLAG, itemSlotCost } from './VellumDataModel.js';
+import {
+  MODULE_ID, CONTAINER_ID_FLAG, itemSlotCost, getContainerCapacity
+} from './VellumDataModel.js';
 import { UIManager }  from './UIManager.js';
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -39,10 +41,15 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
   // ─── Context ──────────────────────────────────────────────────────────────
 
   async _prepareContext(options) {
-    const capacity = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
+    // Keep a live reference (item may have been recreated after flag writes)
+    this._item = this._actor.items.get(this._item.id) ?? this._item;
+    const capacity = getContainerCapacity(this._item);
     const entries  = this._getContentEntries();
-    const total     = Math.max(capacity, entries.length);
-    const slots     = Array.from({ length: total }, (_, i) => {
+    // Show one empty row per free capacity unit (by slot cost of contents).
+    // Always show at least `capacity` rows so empty slots are droppable.
+    const used = this._usedSlotCost(entries);
+    const total = Math.max(capacity, entries.length);
+    const slots = Array.from({ length: total }, (_, i) => {
       const entry = entries[i] ?? null;
       const itemId = entry?.itemId ?? ContainerWindow._entryItemId(entry);
       const item   = itemId ? this._actor.items.get(itemId) : null;
@@ -60,11 +67,6 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
         showSlotCost: slotCost > 1
       };
     });
-    const used = entries.reduce((sum, entry) => {
-      const itemId = entry?.itemId ?? ContainerWindow._entryItemId(entry);
-      const item = itemId ? this._actor.items.get(itemId) : null;
-      return sum + (item ? itemSlotCost(item) : 1);
-    }, 0);
 
     return {
       item:     this._item,
@@ -92,6 +94,12 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
 
     this.element.querySelector('.container-add-slot')
       ?.addEventListener('click', () => this._onAddSlot());
+
+    this.element.querySelector('.container-remove-slot')
+      ?.addEventListener('click', () => this._onRemoveSlot());
+
+    this.element.querySelector('.container-capacity-input')
+      ?.addEventListener('change', e => this._onCapacityChange(e));
 
     this.element.querySelectorAll('.vellum-container-remove').forEach(el => {
       el.addEventListener('click', e => this._onRemoveItem(e));
@@ -245,7 +253,7 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
       return null;
     }
 
-    const capacity = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
+    const capacity = getContainerCapacity(this._item);
     const entries = this._getContentEntries();
     const alreadyOwned = item.parent?.uuid === this._actor.uuid;
     let currentId = String(item.id);
@@ -309,9 +317,32 @@ export class ContainerWindow extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   async _onAddSlot() {
-    const current = this._item.getFlag(MODULE_ID, 'capacity') ?? 6;
-    await this._item.setFlag(MODULE_ID, 'capacity', current + 1);
-    this.render();
+    const current = getContainerCapacity(this._item);
+    await this._item.setFlag(MODULE_ID, 'capacity', Math.min(30, current + 1));
+    this.render(true);
+  }
+
+  async _onRemoveSlot() {
+    const current = getContainerCapacity(this._item);
+    const used = this._usedSlotCost(this._getContentEntries());
+    const next = Math.max(1, Math.max(used, current - 1));
+    await this._item.setFlag(MODULE_ID, 'capacity', next);
+    this.render(true);
+  }
+
+  async _onCapacityChange(event) {
+    const raw = Number(event.currentTarget.value);
+    const used = this._usedSlotCost(this._getContentEntries());
+    let next = Number.isFinite(raw) ? Math.floor(raw) : getContainerCapacity(this._item);
+    next = Math.max(1, Math.min(30, next));
+    if (next < used) {
+      ui.notifications.warn(
+        `"${this._item.name}" currently holds ${used} slots of gear — capacity set to ${used}.`
+      );
+      next = used;
+    }
+    await this._item.setFlag(MODULE_ID, 'capacity', next);
+    this.render(true);
   }
 
   async _onRemoveItem(event) {

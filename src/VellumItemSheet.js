@@ -4,7 +4,9 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { MODULE_ID } from './VellumDataModel.js';
+import {
+  MODULE_ID, resolveItemType, getContainerCapacity, defaultContainerCapacity
+} from './VellumDataModel.js';
 import { UIManager } from './UIManager.js';
 
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -51,14 +53,14 @@ export class VellumItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
   // ─── Context ──────────────────────────────────────────────────────────────
 
   async _prepareContext(options) {
-    const type = this.item.getFlag(MODULE_ID, 'type') ?? 'standard';
+    const type = resolveItemType(this.item);
     return {
       item:           this.item,
       vellumType:     type,
       isContainer:    type === 'container',
       isNotepad:      type === 'notepad',
       vellumSlot:     this.item.getFlag(MODULE_ID, 'slot')       ?? '',
-      vellumCapacity: this.item.getFlag(MODULE_ID, 'capacity')   ?? 6,
+      vellumCapacity: getContainerCapacity(this.item),
       vellumUsed:     this.item.getFlag(MODULE_ID, 'used')       ?? 0,
       vellumNotes:    this.item.getFlag(MODULE_ID, 'notes')      ?? '',
       vellumDamage:   this.item.getFlag(MODULE_ID, 'damage')     ?? '',
@@ -100,9 +102,18 @@ export class VellumItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     const key = el.dataset.itemFlag;
     let value;
     if (el.type === 'checkbox') value = el.checked;
-    else if (el.type === 'number') value = Number(el.value);
+    else if (el.type === 'number') {
+      value = Number(el.value);
+      if (key === 'capacity') {
+        value = Number.isFinite(value) ? Math.max(1, Math.min(30, Math.floor(value))) : 6;
+      }
+    }
     else value = el.value;
-    return this.item.setFlag(MODULE_ID, key, value);
+    await this.item.setFlag(MODULE_ID, key, value);
+    if (key === 'capacity') {
+      UIManager.refreshContainer(this.item.id);
+      this.render(true);
+    }
   }
 
   async _onNameChange(event) {
@@ -127,9 +138,21 @@ export class VellumItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
   async _onTypeChange(event) {
     const type = event.currentTarget.value;
-    await this.item.setFlag(MODULE_ID, 'type', type);
-    if (type === 'container') return UIManager.openContainer(this.item, this.item.parent);
-    if (type === 'notepad') return UIManager.openNotepad(this.item, this.item.parent);
-    this.render();
+    const updates = { [`flags.${MODULE_ID}.type`]: type };
+    // When promoting to container, persist a real capacity so inventory tags
+    // and the container window share the same value (and the user can edit it).
+    if (type === 'container' && this.item.getFlag(MODULE_ID, 'capacity') == null) {
+      updates[`flags.${MODULE_ID}.capacity`] = defaultContainerCapacity(this.item);
+    }
+    await this.item.update(updates);
+    // Re-render this settings sheet so Capacity appears/disappears, then open
+    // the container/notepad window if applicable.
+    await this.render({ force: true });
+    if (type === 'container' && this.item.parent) {
+      return UIManager.openContainer(this.item, this.item.parent);
+    }
+    if (type === 'notepad' && this.item.parent) {
+      return UIManager.openNotepad(this.item, this.item.parent);
+    }
   }
 }

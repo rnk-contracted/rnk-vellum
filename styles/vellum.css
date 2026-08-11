@@ -193,41 +193,32 @@
 /* ── HEADER ROW ──────────────────────────────────────────────────────────── */
 .vellum-header {
   display: grid;
-  grid-template-columns: 180px 1fr 120px;
+  grid-template-columns: 136px 1fr 120px;
   gap: 6px;
   border: 1px solid var(--vellum-border);
   padding: 6px;
   background: var(--vellum-parchment-dk);
-  align-items: stretch;
+  align-items: center;
 }
 
 .vellum-portrait-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: stretch;
+  justify-content: center;
   gap: 3px;
-  align-self: stretch;
-  min-height: 220px;
 }
 
 .vellum-portrait {
-  width: 168px;
-  /* ~2× the old square portrait, fills header depth */
-  height: 100%;
-  min-height: 220px;
-  max-height: 280px;
+  width: 128px;
+  height: 128px;
   object-fit: cover;
   cursor: pointer;
   display: block;
-  flex: 1;
-  /* Organic portrait cutout — tapered top, rounded bottom */
-  clip-path: polygon(
-    18% 0%, 82% 0%,
-    100% 12%, 100% 78%,
-    82% 100%, 18% 100%,
-    0% 78%, 0% 12%
-  );
+  border: 1px solid var(--vellum-border);
+  border-radius: 2px;
+  /* Square portrait — no hexagonal / organic clip */
+  clip-path: none;
   filter: var(--vellum-portrait-glow, none);
   transition: filter 0.2s;
 }
@@ -270,9 +261,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 4px;
-  align-self: flex-start;
 }
 
 .vellum-deity-label {
@@ -284,8 +274,9 @@
 }
 
 .vellum-deity-portrait {
-  width: 74px;
-  height: 74px;
+  /* ~40% larger than prior 74px so it fills the deity column better */
+  width: 104px;
+  height: 104px;
   object-fit: cover;
   cursor: pointer;
   display: block;
@@ -403,10 +394,11 @@
   transform: translate(-50%, -50%);
   width: 52px;
   text-align: center;
-  background: rgba(255,255,255,0.28);
+  /* Transparent — no light square behind the AC number */
+  background: transparent;
   border: none;
   border-bottom: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: 0;
   font-family: var(--vellum-font-body);
   font-size: 1.1rem;
   font-weight: bold;
@@ -417,7 +409,8 @@
 
 .vellum-ac-input:focus {
   outline: none;
-  background: rgba(255,255,255,0.42);
+  background: transparent;
+  border-bottom-color: var(--vellum-accent);
 }
 
 /* ── Stats Grid ──────────────────────────────────────────────────────────── */
@@ -426,12 +419,24 @@
   padding: 4px;
 }
 
+/* Attributes: same visual language as Attacks & Abilities (header + panel, no nested boxes) */
 .vellum-attributes-cell {
-  border: 1px solid var(--vellum-grid-line);
-  padding: 4px;
+  border: none;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
+  min-width: 0;
+}
+
+.vellum-stats-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--vellum-grid-line);
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--vellum-radius);
+  padding: 4px;
 }
 
 .vellum-stats-grid {
@@ -755,12 +760,30 @@
   margin-left: 8px;
 }
 
+/* XP threshold (10 / 20 / 30…) — match label size, more visible */
 .vellum-xp-max {
-  font-size: 0.72rem;
+  font-size: 0.85rem;
+  font-family: var(--vellum-font-body);
+  font-weight: bold;
+  color: var(--vellum-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .vellum-row--level {
   flex-wrap: wrap;
+}
+
+/* Class + Level + XP on a single identity row */
+.vellum-row--identity-meta {
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.vellum-input--class {
+  flex: 1 1 80px;
+  min-width: 64px;
+  max-width: 160px;
 }
 
 .vellum-row--hp {
@@ -898,6 +921,47 @@
   color: var(--vellum-ink-faded);
   opacity: 0.35;
   padding: 2px 4px;
+}
+
+/* Multi-slot continuation line (e.g. chainmail spanning slots 1–2) */
+.vellum-inv-slot--cont {
+  background: rgba(200,160,50,0.06);
+  min-height: 22px;
+}
+
+.vellum-inv-slot--cont.vellum-inv-slot--equipped,
+.vellum-inv-slot--equipped {
+  background: rgba(200,160,50,0.12);
+}
+
+.vellum-inv-slot-cont {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 4px 2px 2px;
+  opacity: 0.75;
+}
+
+.vellum-inv-slot-cont-bar {
+  width: 3px;
+  align-self: stretch;
+  min-height: 14px;
+  background: var(--vellum-grid-line);
+  border-radius: 1px;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.vellum-inv-slot-cont-label {
+  font-size: 0.68rem;
+  font-family: var(--vellum-font-label);
+  color: var(--vellum-ink-faded);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vellum-inv-slot .vellum-inv-row {
@@ -1350,10 +1414,33 @@
 .vellum-container-sheet { display: flex; flex-direction: column; gap: 6px; }
 
 .vellum-container-info {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   font-size: 0.78rem;
   color: var(--vellum-ink-faded);
   border-bottom: 1px solid var(--vellum-grid-line);
   padding-bottom: 4px;
+}
+
+.vellum-container-info .container-capacity-input {
+  width: 40px;
+  text-align: center;
+  font-weight: bold;
+  color: var(--vellum-ink);
+}
+
+.vellum-container-footer {
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid var(--vellum-grid-line);
+  padding-top: 4px;
+}
+
+.vellum-container-footer .vellum-btn--ghost {
+  width: auto;
+  flex: 1;
 }
 
 .vellum-container-list { display: flex; flex-direction: column; gap: 2px; }
@@ -1404,11 +1491,6 @@
 }
 
 .container-slot-input:focus { outline: none; background: rgba(255,255,255,0.3); }
-
-.vellum-container-footer {
-  border-top: 1px solid var(--vellum-grid-line);
-  padding-top: 4px;
-}
 
 /* ── Sub-Window: Notepad ─────────────────────────────────────────────────── */
 .vellum-notepad-sheet { display: flex; flex-direction: column; gap: 4px; height: 100%; }

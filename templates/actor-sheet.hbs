@@ -4,7 +4,7 @@
 
   <div class="vellum-header">
 
-    {{!-- Portrait — tall cutout matching header height --}}
+    {{!-- Portrait — square (default ~128×128) --}}
     <div class="vellum-portrait-cell">
       <img class="vellum-portrait" src="{{actor.img}}"
            title="Click to change portrait" alt="Portrait" />
@@ -17,27 +17,17 @@
         <input class="vellum-input vellum-actor-name" type="text"
                value="{{actor.name}}" />
       </div>
-      <div class="vellum-row">
+      <div class="vellum-row vellum-row--identity-meta">
         <span class="vellum-label">Class:</span>
-        <input class="vellum-input" type="text"
+        <input class="vellum-input vellum-input--class" type="text"
                data-vellum-field="className" value="{{vellum.className}}" />
-      </div>
-      <div class="vellum-row">
-        <span class="vellum-label">Description:</span>
-        <input class="vellum-input" type="text"
-               data-vellum-field="description" value="{{vellum.description}}"
-               placeholder="e.g. a scarred ferryman of the black river" />
-      </div>
-      <div class="vellum-row vellum-row--level">
         <span class="vellum-label">Level:</span>
         <input class="vellum-input vellum-input--sm" type="number"
                data-vellum-field="level" value="{{vellum.level}}" min="1" max="20" />
-        <span class="vellum-xp-group">
-          <span class="vellum-label">XP:</span>
-          <input class="vellum-input vellum-input--sm" type="number"
-                 data-vellum-field="xp" value="{{vellum.xp}}" min="0" />
-          <span class="vellum-label vellum-xp-max">/{{xpMax}}</span>
-        </span>
+        <span class="vellum-label">XP:</span>
+        <input class="vellum-input vellum-input--sm" type="number"
+               data-vellum-field="xp" value="{{vellum.xp}}" min="0" />
+        <span class="vellum-xp-max">/{{xpMax}}</span>
       </div>
       <div class="vellum-row vellum-row--hp">
         <span class="vellum-label">HP:</span>
@@ -51,10 +41,9 @@
 
     {{!-- Animal Deity Portrait + Blessings --}}
     <div class="vellum-deity-cell">
-      <div class="vellum-deity-label">Animal Deity</div>
       <img class="vellum-deity-portrait"
            src="{{#if vellum.animalDeityPortrait}}{{vellum.animalDeityPortrait}}{{else}}icons/svg/mystery-man.svg{{/if}}"
-           title="Click to change deity portrait" alt="Animal Deity" />
+           title="Animal Deity — click to change portrait" alt="Animal Deity" />
       <div class="vellum-blessings-label">Blessings</div>
       <div class="vellum-blessings-row">
         {{#if showB1}}
@@ -100,29 +89,31 @@
         </div>
 
         <div class="vellum-attributes-cell">
-          <div class="vellum-section-header vellum-section-header--compact">Attributes</div>
-          <div class="vellum-stats-grid">
-            <div class="vellum-stats-col">
-              {{#each statsLeft}}
-              <div class="vellum-stat-row">
-                <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
-                <input class="vellum-stat-score" type="number"
-                       data-vellum-field="{{scoreField}}" value="{{score}}" />
-                <span class="vellum-sep">/</span>
-                <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+          <div class="vellum-section-header">Attributes</div>
+          <div class="vellum-stats-panel">
+            <div class="vellum-stats-grid">
+              <div class="vellum-stats-col">
+                {{#each statsLeft}}
+                <div class="vellum-stat-row">
+                  <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
+                  <input class="vellum-stat-score" type="number"
+                         data-vellum-field="{{scoreField}}" value="{{score}}" />
+                  <span class="vellum-sep">/</span>
+                  <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+                </div>
+                {{/each}}
               </div>
-              {{/each}}
-            </div>
-            <div class="vellum-stats-col">
-              {{#each statsRight}}
-              <div class="vellum-stat-row">
-                <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
-                <input class="vellum-stat-score" type="number"
-                       data-vellum-field="{{scoreField}}" value="{{score}}" />
-                <span class="vellum-sep">/</span>
-                <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+              <div class="vellum-stats-col">
+                {{#each statsRight}}
+                <div class="vellum-stat-row">
+                  <button type="button" class="vellum-stat-roll" data-stat="{{key}}" data-mod="{{mod}}" title="Roll {{label}} check">{{label}}</button>
+                  <input class="vellum-stat-score" type="number"
+                         data-vellum-field="{{scoreField}}" value="{{score}}" />
+                  <span class="vellum-sep">/</span>
+                  <span class="vellum-stat-mod vellum-stat-mod--computed" title="Auto-computed from score">{{modDisplay}}</span>
+                </div>
+                {{/each}}
               </div>
-              {{/each}}
             </div>
           </div>
         </div>
@@ -254,10 +245,18 @@
       <div class="vellum-inventory-list vellum-inventory-slots" id="vellum-inv-slots">
 
         {{#each inventorySlots}}
-        <div class="vellum-inv-slot {{#if empty}}vellum-inv-slot--empty{{else}}vellum-inv-slot--filled{{/if}}{{#if overflow}} vellum-inv-slot--overflow{{/if}}"
-             data-slot-num="{{slotNum}}">
+        <div class="vellum-inv-slot {{#if empty}}vellum-inv-slot--empty{{else}}vellum-inv-slot--filled{{/if}}{{#if isContinuation}} vellum-inv-slot--cont{{/if}}{{#if overflow}} vellum-inv-slot--overflow{{/if}}{{#if equipped}} vellum-inv-slot--equipped{{/if}}"
+             data-slot-num="{{slotNum}}"
+             {{#if itemId}}data-item-id="{{itemId}}"{{/if}}>
           <span class="vellum-inv-slot-num">{{slotNum}}.</span>
-          {{#unless empty}}
+          {{#if empty}}
+          <div class="vellum-inv-slot-empty">—</div>
+          {{else if isContinuation}}
+          <div class="vellum-inv-slot-cont" title="{{itemName}} (multi-slot)">
+            <span class="vellum-inv-slot-cont-bar"></span>
+            <span class="vellum-inv-slot-cont-label">{{itemName}}</span>
+          </div>
+          {{else}}
           <div class="vellum-inv-row {{#if equipped}}vellum-inv-row--equipped{{/if}}"
                data-slot="{{slot}}"
                data-item-id="{{itemId}}"
@@ -288,9 +287,7 @@
               <button type="button" class="vellum-inv-btn vellum-item-delete" title="Remove">✕</button>
             </div>
           </div>
-          {{else}}
-          <div class="vellum-inv-slot-empty">—</div>
-          {{/unless}}
+          {{/if}}
         </div>
         {{/each}}
 

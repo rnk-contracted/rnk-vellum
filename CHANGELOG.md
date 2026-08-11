@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.13] - 2026-08-11
+
+### Fixed
+- **Weapons roll again** from Inventory and Attacks & Abilities. Category is resolved from system type / flags (not only a stored `gear` flag), so Shadowdark weapons show the roll control and use the native attack flow.
+- AC shield no longer shows a light rectangle behind the number (input background is transparent).
+- **Shadowdark Backpack** (and other named bags/sacks/pouches/chests) auto-detect as Vellum containers — double-click / pencil open the contents window.
+- **Container capacity is editable** — number field in the container window header (and in Vellum Settings); ± Slot buttons; capacity is saved on create (default 6, backpacks default 10).
+- Shadowdark items with `slots_used: 0` (backpack) no longer count as 1 pack slot.
+
+### Changed
+- Player portrait is a **square 128×128** (hexagonal clip-path removed).
+- **Description** field removed from the header.
+- **Class, Level, and XP** share one identity row; XP max (`/10`, `/20`, …) is larger and bolder.
+- **Animal Deity** label text removed; deity portrait enlarged ~40% (74px → 104px).
+- **Attributes** panel matches Attacks & Abilities styling (section header + single content panel, no nested boxes).
+- Multi-slot gear (e.g. chainmail at 2 slots) **occupies consecutive numbered inventory lines** — primary row plus a continuation line for each extra slot.
+
 ## [1.2.12] - 2026-08-10
 
 ### Added

@@ -7,8 +7,9 @@
 import { VellumActorSheet } from './src/VellumActorSheet.js';
 import { VellumItemSheet } from './src/VellumItemSheet.js';
 import { registerSettings, applyGlowVars } from './src/VellumSettings.js';
-
-const MODULE_ID = 'rnk-vellum';
+import {
+  MODULE_ID, resolveItemCategory, resolveItemType, defaultContainerCapacity
+} from './src/VellumDataModel.js';
 
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('add', (a, b) => Number(a) + Number(b));
@@ -16,26 +17,6 @@ Handlebars.registerHelper('capitalize', (value) => {
   const s = value == null ? '' : String(value);
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 });
-
-function inferVellumCategory(item) {
-  const t = (item.type ?? '').toLowerCase();
-  const n = (item.name ?? '').toLowerCase();
-  if (t === 'spell') return 'spell';
-  if (t === 'weapon') return 'weapon';
-  if (t === 'armor' || t === 'equipment') return 'armor';
-  if (t === 'consumable' || t === 'potion' || t === 'scroll') return 'consumable';
-  if (t === 'tool') return 'tool';
-  if (t === 'shield') return 'shield';
-  if (t === 'loot' || t === 'treasure') return 'misc';
-  if (n.includes('armor') || n.includes('mail') || n.includes('plate') || n.includes('leather')) return 'armor';
-  if (n.includes('shield')) return 'shield';
-  if (n.includes('sword') || n.includes('axe') || n.includes('bow') ||
-      n.includes('dagger') || n.includes('spear') || n.includes('mace') ||
-      n.includes('club') || n.includes('staff') || n.includes('warhammer')) return 'weapon';
-  if (n.includes('potion') || n.includes('scroll') || n.includes('ration') ||
-      n.includes('torch') || n.includes('oil')) return 'consumable';
-  return 'gear';
-}
 
 Hooks.once('init', () => {
   registerSettings();
@@ -144,7 +125,18 @@ Hooks.on('createItem', async (item) => {
 
   // Assign category if missing
   if (item.getFlag(MODULE_ID, 'category') == null) {
-    updates[`flags.${MODULE_ID}.category`] = inferVellumCategory(item);
+    updates[`flags.${MODULE_ID}.category`] = resolveItemCategory(item);
+  }
+
+  // Auto-promote Shadowdark backpacks / sacks / etc. to Vellum containers
+  if (item.getFlag(MODULE_ID, 'type') == null) {
+    const inferredType = resolveItemType(item);
+    if (inferredType === 'container') {
+      updates[`flags.${MODULE_ID}.type`] = 'container';
+      if (item.getFlag(MODULE_ID, 'capacity') == null) {
+        updates[`flags.${MODULE_ID}.capacity`] = defaultContainerCapacity(item);
+      }
+    }
   }
 
   if (Object.keys(updates).length) {

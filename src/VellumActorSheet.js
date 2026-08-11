@@ -4,7 +4,11 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES, ROLLABLE_CATEGORIES, CONTAINER_ID_FLAG, itemSlotCost, weaponStatTag, armorStatTag, spellStatTag } from './VellumDataModel.js';
+import {
+  getVellumData, setVellumData, buildStats, MODULE_ID, WEIGHTLESS_CATEGORIES,
+  CONTAINER_ID_FLAG, itemSlotCost, weaponStatTag, armorStatTag, spellStatTag,
+  resolveItemCategory, isItemRollable, resolveItemType, getContainerCapacity
+} from './VellumDataModel.js';
 import { VellumSheetEvents } from './VellumSheetEvents.js';
 import { toggleTokenGlow } from './VellumTokenGlow.js';
 
@@ -181,34 +185,27 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const slots = [];
     let autoSlot = 1000; // high number so auto-slotted items sort after manually slotted ones
     for (const it of this.actor.items.contents) {
-      const flagCategory = it.getFlag(MODULE_ID, 'category') ?? 'gear';
-      const containerId  = it.getFlag(MODULE_ID, CONTAINER_ID_FLAG);
-      const inferredCategory = flagCategory === 'gear'
-        ? ((it.type ?? '').toLowerCase() === 'spell' ? 'spell' : flagCategory)
-        : flagCategory;
-      const category = inferredCategory;
+      const category = resolveItemCategory(it);
+      const containerId = it.getFlag(MODULE_ID, CONTAINER_ID_FLAG);
       // Items in trait/talent/knowledge/charm categories are shown elsewhere, not in inventory
       if (containerId || VellumActorSheet.TRAIT_CATEGORIES.has(category)) continue;
       const slot = it.getFlag(MODULE_ID, 'slot') ?? autoSlot++;
-      const type     = it.getFlag(MODULE_ID, 'type')     ?? 'standard';
+      const type     = resolveItemType(it);
       const damage   = it.getFlag(MODULE_ID, 'damage')   ?? '';
       const weight   = it.getFlag(MODULE_ID, 'weight')   ?? '';
       const equipped = it.getFlag(MODULE_ID, 'equipped') ?? false;
-      const capacity = it.getFlag(MODULE_ID, 'capacity') ?? null;
+      const capacity = type === 'container' ? getContainerCapacity(it) : null;
       const used     = type === 'container' ? this._containerUsed(it) : null;
-      const slotCost = itemSlotCost(it);
+      const cost     = itemSlotCost(it);
 
       // Weightless: spell/ability categories don't consume inventory slots
       const isWeightless = WEIGHTLESS_CATEGORIES.has(category);
-
-      // Rollable: weapons + spells/abilities + anything with a damage formula
-      const hasFormula = !!(damage || it.system?.damage?.formula
-        || it.system?.damage?.parts?.length);
-      const isRollable = ROLLABLE_CATEGORIES.has(category) || hasFormula;
+      const isWeapon     = category === 'weapon' || !!(it.system?.isWeapon);
+      const isRollable   = isItemRollable(it, category);
 
       // Roll-stat display: damage+mod for weapons, AC for armor/shields, DC for spells
       let statTag = '';
-      if (category === 'weapon') statTag = weaponStatTag(it, vellum);
+      if (isWeapon || category === 'weapon') statTag = weaponStatTag(it, vellum);
       else if (category === 'armor' || category === 'shield') statTag = armorStatTag(it);
       else if (category === 'spell') statTag = spellStatTag(it);
 
@@ -217,9 +214,10 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       if (statTag) tags.push(statTag);
       else if (damage) tags.push(damage);
       if (category !== 'gear') tags.push(category.charAt(0).toUpperCase() + category.slice(1));
+      if (type === 'container') tags.push('Container');
       if (weight)  tags.push(weight);
-      if (slotCost > 1) tags.push(`${slotCost} slots`);
-      if (type === 'container' && capacity != null) tags.push(`${used ?? 0}/${capacity}`);
+      if (cost > 1) tags.push(`${cost} slots`);
+      if (type === 'container') tags.push(`${used ?? 0}/${capacity}`);
 
       slots.push({
         slot,
@@ -228,7 +226,7 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         itemImg:     it.img ?? '',
         isContainer: type === 'container',
         isNotepad:   type === 'notepad',
-        isWeapon:    category === 'weapon',
+        isWeapon,
         isWeightless,
         isRollable,
         equipped,
@@ -238,58 +236,107 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
         tags,
         capacity,
         used,
-        slotCost
+        slotCost: cost
       });
     }
     return slots.sort((a, b) => a.slot - b.slot);
   }
 
-  /**
-   * Split prepared inventory into:
-   * - Attacks & Abilities (weapons / spells / abilities) for quick combat use
-   * - Numbered pack slots (all physical gear, Cairn-style 1..max)
-   * Weapons appear in both: rollable up top, and as numbered pack entries.
-   */
+  /** Split inventory into Attacks & Abilities vs numbered pack slots. */
   _splitInventory(inventory, invMax) {
     const ATTACK_CATS = new Set(['weapon', 'spell', 'ability']);
-    const attacksItems = inventory.filter(i =>
-      ATTACK_CATS.has(i.category) || i.isWeapon
-    );
+    const attacksItems = inventory.filter(i => ATTACK_CATS.has(i.category) || i.isWeapon);
     const packItems = inventory.filter(i => !i.isWeightless);
-    const inventorySlots = this._buildNumberedSlots(packItems, invMax);
-    return { attacksItems, inventorySlots };
+    return { attacksItems, inventorySlots: this._buildNumberedSlots(packItems, invMax) };
   }
 
-  /** Build Cairn-style numbered slots 1..invMax (plus overflow rows if needed). */
+  /** Cairn-style slots 1..invMax; multi-slot items span consecutive lines. */
   _buildNumberedSlots(items, invMax) {
     const sorted = [...items].sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
-    const occupied = new Map(); // slotNum -> item
+    const primaryAt = new Map();      // slotNum -> item
+    const continuationAt = new Map(); // slotNum -> item
+    const blocked = new Set();
+
+    const rangeFree = (start, cost) => {
+      if (start < 1) return false;
+      for (let i = 0; i < cost; i++) {
+        const s = start + i;
+        if (s > invMax || blocked.has(s)) return false;
+      }
+      return true;
+    };
+
+    const place = (start, item, cost) => {
+      primaryAt.set(start, item);
+      blocked.add(start);
+      for (let i = 1; i < cost; i++) {
+        continuationAt.set(start + i, item);
+        blocked.add(start + i);
+      }
+    };
+
     let cursor = 1;
+    const overflow = [];
 
     for (const item of sorted) {
+      // Visual span is at least 1 row even when system cost is 0 (e.g. backpack).
+      const rawCost = Number(item.slotCost);
+      const cost = Math.max(1, Math.min(
+        Number.isFinite(rawCost) && rawCost >= 0 ? (rawCost || 1) : 1,
+        invMax
+      ));
       let n = Number(item.slot);
-      if (!Number.isFinite(n) || n < 1 || n > invMax || occupied.has(n)) {
-        while (occupied.has(cursor) && cursor <= invMax) cursor++;
-        n = cursor <= invMax ? cursor : (sorted.indexOf(item) + invMax + 1);
+
+      if (!Number.isFinite(n) || n < 1 || !rangeFree(n, cost)) {
+        while (cursor <= invMax && !rangeFree(cursor, cost)) cursor++;
+        n = cursor <= invMax ? cursor : null;
       }
-      occupied.set(n, item);
-      if (n === cursor) cursor++;
+
+      if (n != null && rangeFree(n, cost)) {
+        place(n, item, cost);
+        if (n <= cursor) cursor = n + cost;
+      } else {
+        overflow.push(item);
+      }
     }
 
     const slots = [];
     for (let i = 1; i <= invMax; i++) {
-      const item = occupied.get(i) ?? null;
-      slots.push({
-        slotNum: i,
-        empty: !item,
-        overflow: false,
-        ...(item ? item : {})
-      });
-    }
-    for (const [n, item] of occupied) {
-      if (n > invMax) {
-        slots.push({ slotNum: n, empty: false, overflow: true, ...item });
+      const item = primaryAt.get(i);
+      const cont = continuationAt.get(i);
+      if (item) {
+        slots.push({
+          slotNum: i,
+          empty: false,
+          isContinuation: false,
+          overflow: false,
+          ...item
+        });
+      } else if (cont) {
+        slots.push({
+          slotNum: i,
+          empty: false,
+          isContinuation: true,
+          overflow: false,
+          itemId: cont.itemId,
+          itemName: cont.itemName,
+          equipped: cont.equipped,
+          slotCost: cont.slotCost
+        });
+      } else {
+        slots.push({ slotNum: i, empty: true, isContinuation: false, overflow: false });
       }
+    }
+
+    let overflowNum = invMax + 1;
+    for (const item of overflow) {
+      slots.push({
+        slotNum: overflowNum++,
+        empty: false,
+        isContinuation: false,
+        overflow: true,
+        ...item
+      });
     }
     return slots;
   }
@@ -321,12 +368,11 @@ export class VellumActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     const dropCategory = charmSlot ? 'charm' : (traitList?.dataset?.category ?? null);
     const targetSlotNum = packSlot ? Number(packSlot.dataset.slotNum) : null;
     const RECLASSIFY_CATEGORIES = new Set(['talent', 'trait', 'knowledge', 'charm']);
-    const currentCategory = item.getFlag(MODULE_ID, 'category') ?? 'gear';
+    const currentCategory = resolveItemCategory(item);
     const currentContainerId = item.getFlag(MODULE_ID, CONTAINER_ID_FLAG) ?? null;
-    const typeSlug = String(item.type ?? '').toLowerCase();
-    const isSpellLike = currentCategory === 'spell' || item.system?.isSpell || typeSlug === 'spell';
-    const isAbilityLike = currentCategory === 'ability' || item.system?.isAbility || typeSlug === 'ability';
-    const isWeightlessItem = WEIGHTLESS_CATEGORIES.has(currentCategory) || isSpellLike || isAbilityLike;
+    const isWeightlessItem = WEIGHTLESS_CATEGORIES.has(currentCategory)
+      || !!(item.system?.isSpell)
+      || !!(item.system?.isAbility);
     const isOnThisActor = this.actor.uuid === item.parent?.uuid;
     const currentCountsTowardInventory =
       isOnThisActor &&

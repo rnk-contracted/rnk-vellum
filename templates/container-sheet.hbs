@@ -4,7 +4,13 @@
 
   <div class="vellum-container-info">
     <strong>{{item.name}}</strong>
-    &nbsp;·&nbsp; {{used}} / {{capacity}} slots used
+    &nbsp;·&nbsp;
+    <span class="vellum-container-used">{{used}}</span>
+    /
+    <input class="vellum-input vellum-input--xs container-capacity-input"
+           type="number" min="1" max="30" value="{{capacity}}"
+           title="Container capacity (slots)" />
+    slots
     {{#if overCapacity}}
     <span class="vellum-container-overflow">over capacity</span>
     {{/if}}
@@ -42,8 +48,11 @@
   </div>
 
   <div class="vellum-container-footer">
-    <button type="button" class="vellum-btn--ghost container-add-slot">
-      + Add Slot
+    <button type="button" class="vellum-btn--ghost container-remove-slot" title="Reduce capacity by 1">
+      − Slot
+    </button>
+    <button type="button" class="vellum-btn--ghost container-add-slot" title="Increase capacity by 1">
+      + Slot
     </button>
   </div>
 

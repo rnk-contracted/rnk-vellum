@@ -4,7 +4,10 @@
  * © 2026 RNK Enterprise. All rights reserved. See LICENSE.
  */
 
-import { setVellumData, getVellumData, MODULE_ID, WEIGHTLESS_CATEGORIES } from './VellumDataModel.js';
+import {
+  setVellumData, getVellumData, MODULE_ID, WEIGHTLESS_CATEGORIES,
+  resolveItemCategory, resolveItemType, ensureContainerFlags, defaultContainerCapacity
+} from './VellumDataModel.js';
 import { UIManager } from './UIManager.js';
 import { VellumSheetDrag } from './VellumSheetDrag.js';
 
@@ -175,10 +178,19 @@ export class VellumSheetEvents {
       type
     }]);
     if (!created) return;
-    if (invType !== 'standard') await created.setFlag(MODULE_ID, 'type', invType);
 
-    if (invType === 'container') return UIManager.openContainer(created, actor);
-    if (invType === 'notepad')   return UIManager.openNotepad(created, actor);
+    if (invType === 'container') {
+      await created.update({
+        [`flags.${MODULE_ID}.type`]: 'container',
+        [`flags.${MODULE_ID}.capacity`]: defaultContainerCapacity(created)
+      });
+      return UIManager.openContainer(created, actor);
+    }
+    if (invType === 'notepad') {
+      await created.setFlag(MODULE_ID, 'type', 'notepad');
+      return UIManager.openNotepad(created, actor);
+    }
+
     const { VellumItemSheet } = await import('./VellumItemSheet.js');
     new VellumItemSheet(created).render({ force: true });
   }
@@ -192,7 +204,7 @@ export class VellumSheetEvents {
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    const vellumType = item.getFlag(MODULE_ID, 'type');
+    const vellumType = resolveItemType(item);
     // Containers / notepads open on double-click only (Cairn-style).
     if (vellumType === 'container' || vellumType === 'notepad') return;
 
@@ -209,9 +221,12 @@ export class VellumSheetEvents {
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    const vellumType = item.getFlag(MODULE_ID, 'type');
-    if (vellumType === 'container') return UIManager.openContainer(item, actor);
-    if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
+    const vellumType = resolveItemType(item);
+    if (vellumType === 'container') {
+      await ensureContainerFlags(item);
+      return UIManager.openContainer(item, actor);
+    }
+    if (vellumType === 'notepad') return UIManager.openNotepad(item, actor);
   }
 
   static async _onItemEditClick(event, actor) {
@@ -223,10 +238,13 @@ export class VellumSheetEvents {
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    const vellumType = item.getFlag(MODULE_ID, 'type');
-    // Pencil still opens containers/notepads (discoverable without knowing dbl-click)
-    if (vellumType === 'container') return UIManager.openContainer(item, actor);
-    if (vellumType === 'notepad')   return UIManager.openNotepad(item, actor);
+    const vellumType = resolveItemType(item);
+    // Pencil opens containers/notepads (discoverable without knowing dbl-click)
+    if (vellumType === 'container') {
+      await ensureContainerFlags(item);
+      return UIManager.openContainer(item, actor);
+    }
+    if (vellumType === 'notepad') return UIManager.openNotepad(item, actor);
     return item.sheet.render(true);
   }
 
@@ -309,23 +327,21 @@ export class VellumSheetEvents {
     const item = actor.items.get(itemId);
     if (!item) return;
 
-    const category  = item.getFlag(MODULE_ID, 'category') ?? 'gear';
-    const isSpell   = WEIGHTLESS_CATEGORIES.has(category);
+    const category   = resolveItemCategory(item);
+    const isSpell    = WEIGHTLESS_CATEGORIES.has(category) || !!(item.system?.isSpell);
     const rollConfig = { skipPrompt: event.shiftKey };
-    const typeSlug = String(item.type ?? '').toLowerCase();
-    const isNativeWeapon = (category === 'weapon' || typeSlug === 'weapon' || item.system?.isWeapon) && item.system?.isWeapon;
-    const isNativeSpell  = (category === 'spell' || typeSlug === 'spell' || item.system?.isSpell) && item.system?.isSpell;
+    const typeSlug   = String(item.type ?? '').toLowerCase();
+    const isNativeWeapon = !!(item.system?.isWeapon) || typeSlug === 'weapon' || category === 'weapon';
+    const isNativeSpell  = !!(item.system?.isSpell)  || typeSlug === 'spell'  || category === 'spell';
 
-    if (isNativeWeapon) {
-      if (typeof actor.system?.rollAttack === 'function') {
-        return actor.system.rollAttack(item.uuid, rollConfig);
-      }
+    if (isNativeWeapon && typeof actor.system?.rollAttack === 'function') {
+      try { return await actor.system.rollAttack(item.uuid, rollConfig); }
+      catch (err) { console.warn('RNK Vellum: native rollAttack failed, falling back', err); }
     }
 
-    if (isNativeSpell) {
-      if (typeof actor.system?.castSpell === 'function') {
-        return VellumSheetEvents._castSpellForAnyActor(actor, item, rollConfig);
-      }
+    if (isNativeSpell && typeof actor.system?.castSpell === 'function') {
+      try { return await VellumSheetEvents._castSpellForAnyActor(actor, item, rollConfig); }
+      catch (err) { console.warn('RNK Vellum: native castSpell failed, falling back', err); }
     }
 
     if (!isSpell) {
@@ -338,6 +354,8 @@ export class VellumSheetEvents {
     const flagFormula = item.getFlag(MODULE_ID, 'damage') || '';
     const sysFormula  = item.system?.damage?.formula
       || item.system?.damage?.parts?.[0]?.[0]
+      || item.system?.damage?.oneHanded
+      || item.system?.damage?.twoHanded
       || item.system?.formula
       || '';
     const baseFormula = flagFormula || sysFormula || (isSpell ? '1d20' : '1d6');
